@@ -114,6 +114,11 @@ add_executable(sovereign_cli apps/sovereign_cli.cpp)
 target_link_libraries(sovereign_cli PRIVATE sovereign_lib)
 target_compile_features(sovereign_cli PRIVATE cxx_std_20)
 
+# Scalability Validation Benchmark Target
+add_executable(sovereign_scalability apps/scalability_benchmark.cpp)
+target_link_libraries(sovereign_scalability PRIVATE sovereign_lib)
+target_compile_features(sovereign_scalability PRIVATE cxx_std_20)
+
 
 enable_testing()
 add_test(NAME SovereignUnitTests COMMAND sovereign_tests)
