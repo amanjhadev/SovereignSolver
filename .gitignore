@@ -1,0 +1,30 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Visual Studio / compiler artifacts
+.vs/
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.dll
+*.exe
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# IDE/editor files
+.vscode/
+.idea/
+
+# Generated test/output files
+test_out.txt
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
