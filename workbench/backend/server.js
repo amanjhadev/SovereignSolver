@@ -9,17 +9,58 @@ const { parseStructuredToMps } = require('./structured_parser');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || '0.0.0.0';
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-const upload = multer({ dest: path.join(__dirname, 'temp_uploads') });
+const UPLOAD_DIR = path.join(__dirname, 'temp_uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const upload = multer({ dest: UPLOAD_DIR });
 
 const TEMP_DIR = path.join(__dirname, 'temp_models');
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
-const CLI_PATH = path.resolve(__dirname, '../../build/Release/workbench_cli.exe');
+// Dynamic resolution of C++ Sovereign Solver CLI binary path
+function resolveSolverPath() {
+  if (process.env.SOVEREIGN_SOLVER_PATH) {
+    const envPath = path.resolve(process.env.SOVEREIGN_SOLVER_PATH);
+    if (fs.existsSync(envPath)) return envPath;
+  }
+
+  const candidates = [
+    // Primary CLI target: workbench_cli
+    path.resolve(__dirname, '../../build/Release/workbench_cli.exe'),
+    path.resolve(__dirname, '../../build/workbench_cli.exe'),
+    path.resolve(__dirname, '../../build/Release/workbench_cli'),
+    path.resolve(__dirname, '../../build/workbench_cli'),
+    path.resolve(__dirname, '../bin/workbench_cli'),
+    path.resolve(__dirname, '../../bin/workbench_cli'),
+    '/app/bin/workbench_cli',
+    // Secondary CLI target: sovereign_cli
+    path.resolve(__dirname, '../../build/Release/sovereign_cli.exe'),
+    path.resolve(__dirname, '../../build/sovereign_cli.exe'),
+    path.resolve(__dirname, '../../build/Release/sovereign_cli'),
+    path.resolve(__dirname, '../../build/sovereign_cli'),
+    path.resolve(__dirname, '../bin/sovereign_cli'),
+    path.resolve(__dirname, '../../bin/sovereign_cli'),
+    '/app/bin/sovereign_cli'
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  // Fallback to environment variable or standard build location
+  return process.env.SOVEREIGN_SOLVER_PATH
+    ? path.resolve(process.env.SOVEREIGN_SOLVER_PATH)
+    : path.resolve(__dirname, '../../build/Release/workbench_cli.exe');
+}
+
+function getSolverPath() {
+  return resolveSolverPath();
+}
 
 // Track active solve processes for "Stop Solve" functionality
 const activeProcesses = new Map(); // id -> childProcess
@@ -40,12 +81,16 @@ function createTempMpsFile(type, content, modelName = "model") {
 
 // API: Health Check
 app.get('/api/health', (req, res) => {
-  const cliExists = fs.existsSync(CLI_PATH);
+  const solverPath = getSolverPath();
+  const cliExists = fs.existsSync(solverPath);
   return res.json({
     status: 'ok',
     version: '0.2.0',
-    solver_executable: CLI_PATH,
-    solver_ready: cliExists
+    solver_executable: solverPath,
+    solver_path: solverPath,
+    solver_exists: cliExists,
+    solver_ready: cliExists,
+    solver_version: '0.2.0'
   });
 });
 
@@ -57,9 +102,14 @@ app.post('/api/validate', (req, res) => {
       return res.status(400).json({ success: false, error: 'Model content is required' });
     }
 
+    const solverPath = getSolverPath();
+    if (!fs.existsSync(solverPath)) {
+      return res.status(500).json({ success: false, error: `Solver binary not found at ${solverPath}` });
+    }
+
     const tempFile = createTempMpsFile(type, content, modelName || 'validate_model');
 
-    const cli = spawn(CLI_PATH, ['--mps', tempFile, '--validate-only']);
+    const cli = spawn(solverPath, ['--mps', tempFile, '--validate-only']);
     let stdout = '';
     let stderr = '';
 
@@ -94,12 +144,17 @@ app.post('/api/solve', (req, res) => {
       return res.status(400).json({ success: false, error: 'Model content is required' });
     }
 
+    const solverPath = getSolverPath();
+    if (!fs.existsSync(solverPath)) {
+      return res.status(500).json({ success: false, error: `Solver binary not found at ${solverPath}` });
+    }
+
     const isSse = req.headers.accept === 'text/event-stream' || req.query.stream === 'true';
     const solveId = `solve_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const tempFile = createTempMpsFile(type, content, modelName || 'solve_model');
 
     const args = ['--mps', tempFile, '--timeout', timeout_sec.toString(), '--threads', threads.toString(), '--stream-telemetry'];
-    const cli = spawn(CLI_PATH, args);
+    const cli = spawn(solverPath, args);
 
     activeProcesses.set(solveId, { cli, tempFile });
 
@@ -239,8 +294,8 @@ app.post('/api/upload-mps', upload.single('file'), (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  std_out_log(`Sovereign Workbench Backend API listening on http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  std_out_log(`Sovereign Workbench Backend API listening on http://${HOST}:${PORT}`);
 });
 
 function std_out_log(msg) {

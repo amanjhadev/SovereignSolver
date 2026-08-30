@@ -1,0 +1,15 @@
+.git
+.gitignore
+build/
+node_modules/
+workbench/backend/node_modules/
+workbench/backend/temp_models/
+workbench/backend/temp_uploads/
+workbench/frontend/node_modules/
+workbench/frontend/dist/
+.env
+.env.*
+*.exe
+*.obj
+*.o
+*.a

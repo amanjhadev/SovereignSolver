@@ -30,9 +30,9 @@ The **Sovereign Workbench** provides an industrial-grade mathematical optimizati
 ## 2. Primary Optimization Workflow
 
 ```
-┌─────────────────┐     ┌────────────────────────┐     ┌────────── font-mono ──────────┐
+┌─────────────────┐     ┌────────────────────────┐     ┌───────────────────────────────┐
 │   NEW PROBLEM   │ ──> │  ENTER / UPLOAD MODEL  │ ──> │          VALIDATE             │
-└─────────────────┘     └────────────────────────┘     └────────────── font-mono ──────┘
+└─────────────────┘     └────────────────────────┘     └───────────────────────────────┘
                                                                        │
                                                                        ▼
 ┌─────────────────┐     ┌────────────────────────┐     ┌───────────────────────────────┐
@@ -50,16 +50,19 @@ The **Sovereign Workbench** provides an industrial-grade mathematical optimizati
 
 ## 3. Prerequisites
 
-- **C++ Compiler**: MSVC 2022 / Visual Studio (Windows C++20) or GCC / Clang (Linux/macOS)
+- **C++ Compiler**: MSVC 2022 / Visual Studio (Windows C++20) or GCC / Clang (Linux/macOS C++20)
 - **CMake**: 3.20 or newer
 - **Node.js**: v18.0.0 or newer
+- **Docker** *(Optional for Container Deployment)*: Docker Desktop / Engine v20.10+
 
 ---
 
 ## 4. Build & Setup Instructions
 
-### Step 1: Build C++ Sovereign Solver CLI Engine
-From the repository root (`c:\Solver`):
+### Option A: Local Windows / Host Development
+
+#### Step 1: Build C++ Sovereign Solver CLI Engine
+From the repository root:
 
 ```bash
 mkdir build
@@ -68,11 +71,9 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release --target workbench_cli
 ```
 
-*This compiles `build/Release/workbench_cli.exe`.*
+*This compiles `build/Release/workbench_cli.exe` (Windows) or `build/workbench_cli` (Linux).*
 
----
-
-### Step 2: Start Backend Server
+#### Step 2: Start Backend Server
 From `workbench/backend`:
 
 ```bash
@@ -81,31 +82,78 @@ npm install
 node server.js
 ```
 
-*Backend REST API runs on `http://localhost:3001`.*
+*Backend REST API runs on `http://localhost:3001` (or `http://0.0.0.0:3001`).*
 
-Endpoints:
-- `GET  /api/health` - Backend connectivity & solver binary readiness check
+---
+
+### Option B: Linux Docker Container Deployment
+
+#### Step 1: Build Docker Image
+From the repository root:
+
+```bash
+docker build -t sovereign-backend .
+```
+
+*This triggers a 2-stage build: compiling the C++ `workbench_cli` engine using GCC inside Ubuntu 22.04 and packaging it with the Node.js 20 Express backend.*
+
+#### Step 2: Run Container
+```bash
+docker run --rm -p 3001:3001 sovereign-backend
+```
+
+#### Step 3: Health & Solver Verification
+
+1. **Health Check**:
+   ```bash
+   curl http://localhost:3001/api/health
+   ```
+   *Expected Response:*
+   ```json
+   {
+     "status": "ok",
+     "version": "0.2.0",
+     "solver_executable": "/app/bin/workbench_cli",
+     "solver_path": "/app/bin/workbench_cli",
+     "solver_exists": true,
+     "solver_ready": true,
+     "solver_version": "0.2.0"
+   }
+   ```
+
+2. **Test Solver Request (`test_assignment_4x4.mps`)**:
+   ```bash
+   curl -X POST http://localhost:3001/api/solve \
+     -H "Content-Type: application/json" \
+     -d "{\"type\":\"mps\",\"content\":\"$(cat test_assignment_4x4.mps | sed 's/"/\\"/g' | s/$/\\n/ | tr -d '\r\n')\",\"modelName\":\"test_assignment_4x4\"}"
+   ```
+   *Expected Result:* `"status_name": "Optimal"`, `"objective_value": 13`.
+
+---
+
+## 5. API Endpoints
+
+- `GET  /api/health` - Backend status & C++ solver binary readiness check
 - `POST /api/validate` - Model syntax & structure validation
-- `POST /api/solve` - Model optimization solve execution
+- `POST /api/solve` - Model optimization solve execution (supports streaming SSE)
 - `POST /api/stop-solve` - Terminate active solve process
 - `POST /api/upload-mps` - Upload and parse `.mps` and `.mps.gz` files
 
 ---
 
-### Step 3: Start Frontend Workbench UI
-From `workbench/frontend`:
+## 6. Frontend Environment Configuration
 
-```bash
-cd workbench/frontend
-npm install
-npm run dev
+To configure the React frontend to communicate with the deployed backend API, set `VITE_API_BASE_URL` in `workbench/frontend/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:3001
 ```
 
-*Frontend web application opens at `http://localhost:3000`.*
+*(Or point to your deployed backend container URL).*
 
 ---
 
-## 5. Input Formats & Presets
+## 7. Input Formats & Presets
 
 ### A. Structured Model Text Format
 ```text
@@ -125,17 +173,10 @@ job2: x2 + x3 <= 10
 ### B. MPS & GZIP MPS Upload
 Upload raw standard `.mps` or compressed `.mps.gz` files directly via drag and drop.
 
-### C. Preset Benchmark Examples
-- **Assignment 4×4** (Optimal = 13.0)
-- **Capacitated Facility Location 5×8** (MILP 45 vars, 13 cons)
-- **10teams** (MIPLIB benchmark)
-- **control30-3-2-3** (MIPLIB benchmark)
-
 ---
 
-## 6. Solver Status Semantics
+## 8. Solver Status Semantics
 
-The Workbench UI faithfully reports solver statuses directly from backend CLI execution:
 - `OPTIMAL` - Proven optimal solution found
 - `FEASIBLE` - Valid integer incumbent found within limit
 - `TIME LIMIT` - Search terminated at configured timeout limit
