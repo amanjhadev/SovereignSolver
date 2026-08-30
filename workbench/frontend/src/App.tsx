@@ -18,6 +18,21 @@ import { Terminal } from 'lucide-react';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
+function detectModelType(content: string, fallbackMode: PresetInputType): PresetInputType {
+  const trimmed = content.trim();
+  if (!trimmed) return fallbackMode;
+
+  if (/^\s*(VARIABLES|MINIMIZE|MAXIMIZE)\b/i.test(trimmed) || /\bSUBJECT TO\b/i.test(trimmed)) {
+    return 'structured';
+  }
+
+  if (/^\s*NAME\b/i.test(trimmed) || /\bROWS\b/i.test(trimmed) || /\bCOLUMNS\b/i.test(trimmed) || /\bENDATA\b/i.test(trimmed)) {
+    return 'mps';
+  }
+
+  return fallbackMode;
+}
+
 function WorkbenchMain() {
   const { addToast } = useToast();
 
@@ -117,6 +132,12 @@ function WorkbenchMain() {
       addToast('warning', 'Validation Error', 'Editor content cannot be empty');
       return;
     }
+
+    const effectiveType = detectModelType(content, inputMode);
+    if (effectiveType !== inputMode) {
+      setInputMode(effectiveType);
+    }
+
     setIsValidating(true);
     setValidationInfo(null);
     setSolveResult(null);
@@ -126,7 +147,7 @@ function WorkbenchMain() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: inputMode,
+          type: effectiveType,
           content,
           modelName: problemName
         })
@@ -161,6 +182,11 @@ function WorkbenchMain() {
       return;
     }
 
+    const effectiveType = detectModelType(content, inputMode);
+    if (effectiveType !== inputMode) {
+      setInputMode(effectiveType);
+    }
+
     setIsSolving(true);
     setElapsedSec(0);
     setSolveResult(null);
@@ -175,7 +201,7 @@ function WorkbenchMain() {
           'Accept': 'text/event-stream'
         },
         body: JSON.stringify({
-          type: inputMode,
+          type: effectiveType,
           content,
           modelName: problemName,
           timeout_sec: timeoutSec,
@@ -497,6 +523,7 @@ function WorkbenchMain() {
               onValidate={handleValidate}
               onSolve={handleSolve}
               onStopSolve={handleStopSolve}
+              onLoadPreset={handleSelectPreset}
               onFileUpload={handleFileUpload}
               onFormatContent={handleFormatContent}
               onClearContent={handleClearContent}
