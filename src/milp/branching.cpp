@@ -15,6 +15,7 @@ bool check_solution_integrality(
     std::span<const Index> integer_var_indices,
     Float64 tol_integrality
 ) {
+    if (sol.empty()) return false;
     for (Index orig_idx : integer_var_indices) {
         if (orig_idx >= 0 && orig_idx < static_cast<Index>(sol.size())) {
             if (!is_integral(sol[orig_idx], tol_integrality)) {

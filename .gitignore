@@ -17,6 +17,15 @@ CMakeCache.txt
 cmake_install.cmake
 Makefile
 
+# Node dependencies / generated frontend output
+node_modules/
+dist/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
 # IDE/editor files
 .vscode/
 .idea/

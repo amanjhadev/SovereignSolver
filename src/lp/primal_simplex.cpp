@@ -2,6 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include <limits>
+#include <chrono>
 
 namespace sovereign::lp {
 
@@ -13,12 +14,34 @@ PrimalSimplexSolver::PrimalSimplexSolver(const SolverConfig& config)
       max_iterations_(config.max_iterations) {}
 
 SimplexStatus PrimalSimplexSolver::solve(SimplexState& state, Int64& total_iters) {
-    while (total_iters < max_iterations_) {
-        // Refactorize & solve state
-        if (!is_ok(state.factorize_basis(config_)) ||
-            !is_ok(state.solve_primal_solution()) ||
-            !is_ok(state.solve_dual_solution())) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    if (!state.basis_matrix().is_factored()) {
+        if (!is_ok(state.factorize_basis(config_))) {
             return SimplexStatus::NumericalFailure;
+        }
+    }
+
+    while (total_iters < max_iterations_) {
+        auto now_time = std::chrono::high_resolution_clock::now();
+        if (std::chrono::duration<double>(now_time - start_time).count() > config_.max_time_sec) {
+            return SimplexStatus::TimeLimit;
+        }
+
+        // Refactorize if update stack is full or un-factored
+        if (state.basis_matrix().should_refactorize()) {
+            if (!is_ok(state.factorize_basis(config_))) {
+                return SimplexStatus::NumericalFailure;
+            }
+        }
+
+        if (!is_ok(state.solve_primal_solution()) ||
+            !is_ok(state.solve_dual_solution())) {
+            // Retry with fresh full refactorization if solve fails
+            if (!is_ok(state.factorize_basis(config_)) ||
+                !is_ok(state.solve_primal_solution()) ||
+                !is_ok(state.solve_dual_solution())) {
+                return SimplexStatus::NumericalFailure;
+            }
         }
 
         // 1. Select Entering Variable (most negative reduced cost direction)
@@ -121,10 +144,16 @@ SimplexStatus PrimalSimplexSolver::solve(SimplexState& state, Int64& total_iters
             // Flip entering variable bound without basis pivot
             BasisStatus flip_st = (ent_st == BasisStatus::AtLower) ? BasisStatus::AtUpper : BasisStatus::AtLower;
             state.basis().set_nonbasic(entering_col, flip_st);
-            state.solve_primal_solution();
         } else {
-            // Execute basis pivot & refactorize immediately
+            // Execute basis pivot & apply Product-Form Eta update
             state.basis().pivot(entering_col, leaving_slot, leaving_new_status);
+            Status up_st = state.basis_matrix().update_pivot(leaving_slot, d, tol_pivot_);
+            if (!is_ok(up_st)) {
+                // Instability detected -> trigger full refactorization
+                if (!is_ok(state.factorize_basis(config_))) {
+                    return SimplexStatus::NumericalFailure;
+                }
+            }
         }
 
         total_iters++;

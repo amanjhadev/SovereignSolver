@@ -19,6 +19,7 @@ struct SolverConfig {
     // Refactorization & Iteration controls
     Int32 max_refactorization_interval  {50};
     Int64 max_iterations                {10000};
+    Float64 max_time_sec                {3600.0}; // Maximum runtime in seconds
 
     // Logging & Diagnostics
     Int32 verbosity_level               {1};     // 0 = Silent, 1 = Info, 2 = Debug

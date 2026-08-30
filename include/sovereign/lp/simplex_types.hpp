@@ -14,7 +14,8 @@ enum class SimplexStatus : std::uint8_t {
     Infeasible       = 2,
     Unbounded        = 3,
     IterationLimit   = 4,
-    NumericalFailure = 5
+    NumericalFailure = 5,
+    TimeLimit        = 6
 };
 
 enum class PricingStrategy : std::uint8_t {

@@ -48,17 +48,18 @@ HeuristicResult DivingHeuristic::run(
             return res;
         }
 
-        // Find most fractional integer variable to fix/clamp
+        // Guided Diving: Pick fractional integer variable closest to integer bound
         Index best_var = -1;
-        Float64 max_frac = 0.0;
+        Float64 min_dist = 1.0;
         Float64 best_val = 0.0;
 
         for (Index j : integer_var_indices) {
             if (j < 0 || j >= static_cast<Index>(sol.size())) continue;
             Float64 val = sol[j];
-            Float64 frac = std::abs(val - std::floor(val + 0.5));
-            if (frac > tol_integrality_ && frac > max_frac) {
-                max_frac = frac;
+            Float64 rounded = std::round(val);
+            Float64 dist = std::abs(val - rounded);
+            if (dist > tol_integrality_ && dist < min_dist) {
+                min_dist = dist;
                 best_var = j;
                 best_val = val;
             }

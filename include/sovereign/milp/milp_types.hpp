@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <functional>
 
 namespace sovereign::milp {
 
@@ -56,6 +57,9 @@ struct MILPConfig {
     ParallelMode parallel_mode{ParallelMode::Deterministic};
     std::uint64_t random_seed{42};
     bool enable_work_stealing{true};
+
+    // Telemetry Observability Callback
+    std::function<void(const std::string& json_line)> telemetry_callback{nullptr};
 };
 
 struct MILPResult {
@@ -74,6 +78,13 @@ struct MILPResult {
     Int64 cuts_accepted{0};
     Int64 cuts_rejected{0};
     Int64 heuristic_incumbents_found{0};
+
+    // Node Fathoming Counters & Unresolved Tracking
+    Int64 nodes_created{0};
+    Int64 nodes_pruned_infeasible{0};
+    Int64 nodes_pruned_bound{0};
+    Int64 nodes_pruned_integrality{0};
+    Int64 nodes_unresolved{0};
 
     std::string message;
 };

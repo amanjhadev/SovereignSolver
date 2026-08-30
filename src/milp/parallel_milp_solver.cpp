@@ -43,9 +43,19 @@ MILPResult ParallelMILPSolver::solve_deterministic(const MILPModel& model) {
     lp::LPModel root_lp = model.lp_model();
     BranchTranslationLayer branch_translation;
 
-    lp::DualSimplexSolver root_lp_solver;
+    SolverConfig lp_cfg;
+    lp_cfg.max_time_sec = config_.max_time_sec;
+    lp::DualSimplexSolver root_lp_solver(lp_cfg);
     auto root_lp_res = root_lp_solver.solve(root_lp);
     Int64 total_lp_solves = 1;
+
+    if (root_lp_res.status == lp::SimplexStatus::TimeLimit) {
+        res.status = MILPStatus::TimeLimit;
+        res.message = "Root LP relaxation reached time limit (" + std::to_string(config_.max_time_sec) + "s)";
+        res.nodes_explored = 0;
+        res.lp_solves = total_lp_solves;
+        return res;
+    }
 
     if (root_lp_res.status == lp::SimplexStatus::Infeasible) {
         res.status = MILPStatus::Infeasible;

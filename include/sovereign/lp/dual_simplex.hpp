@@ -27,10 +27,12 @@ public:
 
     // Solves general LP model using Dual Revised Simplex with Phase I & Phase II
     SimplexResult solve(const LPModel& model);
+    SimplexResult solve(const LPModel& model, const Basis& initial_basis);
 
 private:
     // Internal Phase I auxiliary problem solver using Primal Simplex
-    SimplexStatus solve_phase_1(const LPModel& std_model, SimplexState& state, Int64& total_iters);
+    SimplexStatus solve_phase_1(const LPModel& std_model, LPModel& phase2_model, SimplexState& state, Int64& total_iters);
+    SimplexStatus solve_warm_phase_1(const LPModel& std_model, const Basis& warm_start_basis, LPModel& phase2_model, SimplexState& state, Int64& total_iters);
 
     // Internal Phase II optimization solver using Dual Simplex
     SimplexStatus solve_phase_2(SimplexState& state, Int64& total_iters);

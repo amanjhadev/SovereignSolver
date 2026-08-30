@@ -60,3 +60,43 @@ ENDATA
     EXPECT_TRUE(!parser.last_error().empty());
     EXPECT_EQ(parser.error_line(), 4);
 }
+
+TEST_CASE(MPSParserIntegerMarkersINTORG) {
+    std::string mps_data = R"(
+NAME          INTMARKLM
+ROWS
+ N  COST
+ L  C1
+COLUMNS
+    MARK0000  'MARKER'                 'INTORG'
+    X1        COST      1.0   C1        1.0
+    MARK0001  'MARKER'                 'INTEND'
+    X2        COST      2.0   C1        1.0
+RHS
+    RHS1      C1       10.0
+BOUNDS
+ FX BND       X1        1.0
+ENDATA
+)";
+
+    std::istringstream iss(mps_data);
+    sovereign::lp::LPModel model;
+    sovereign::lp::MPSParser parser;
+
+    auto status = parser.parse_stream(iss, model, "int_marker_stream");
+    EXPECT_STATUS_OK(status);
+
+    EXPECT_EQ(model.num_variables(), 2);
+    EXPECT_EQ(model.num_constraints(), 1);
+
+    // X1 should be Binary
+    const auto& var1 = model.get_variable(0);
+    EXPECT_EQ(var1.name, "X1");
+    EXPECT_EQ(static_cast<int>(var1.type), static_cast<int>(sovereign::VariableType::Binary));
+
+    // X2 should be Continuous
+    const auto& var2 = model.get_variable(1);
+    EXPECT_EQ(var2.name, "X2");
+    EXPECT_EQ(static_cast<int>(var2.type), static_cast<int>(sovereign::VariableType::Continuous));
+}
+

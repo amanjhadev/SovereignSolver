@@ -74,7 +74,7 @@ Status SimplexState::compute_b_eff() {
 }
 
 Status SimplexState::solve_primal_solution() {
-    if (!is_factored_) {
+    if (!basis_matrix_.is_factored()) {
         return Status::Error;
     }
 
@@ -93,7 +93,7 @@ Status SimplexState::solve_primal_solution() {
 }
 
 Status SimplexState::solve_dual_solution() {
-    if (!is_factored_) {
+    if (!basis_matrix_.is_factored()) {
         return Status::Error;
     }
 
@@ -125,7 +125,7 @@ void SimplexState::compute_reduced_costs() {
 }
 
 Status SimplexState::compute_ftran_direction(Index entering_col, std::vector<Float64>& d_out) const {
-    if (!is_factored_) {
+    if (!basis_matrix_.is_factored()) {
         return Status::Error;
     }
     std::vector<Float64> A_q(m_, 0.0);
@@ -139,7 +139,7 @@ Status SimplexState::compute_ftran_direction(Index entering_col, std::vector<Flo
 }
 
 Status SimplexState::compute_btran_row(Index leaving_slot, std::vector<Float64>& y_p_out) const {
-    if (!is_factored_) {
+    if (!basis_matrix_.is_factored()) {
         return Status::Error;
     }
     if (leaving_slot < 0 || leaving_slot >= m_) {
@@ -170,11 +170,16 @@ bool SimplexState::check_primal_feasibility(Float64 tolerance, Float64& max_viol
 
     for (Index i = 0; i < m_; ++i) {
         Index col = basis_.get_basic_var(i);
-        const auto& var = std_model_->get_variable(col);
         Float64 val = x_B_[i];
+        Float64 lb = 0.0, ub = INFINITY_VAL;
+        if (col >= 0 && col < std_model_->num_variables()) {
+            const auto& var = std_model_->get_variable(col);
+            lb = var.lower_bound;
+            ub = var.upper_bound;
+        }
 
-        Float64 viol_lb = var.lower_bound - val;
-        Float64 viol_ub = val - var.upper_bound;
+        Float64 viol_lb = lb - val;
+        Float64 viol_ub = val - ub;
 
         Float64 max_row_viol = std::max(0.0, std::max(viol_lb, viol_ub));
         if (max_row_viol > max_violation) {
@@ -217,7 +222,9 @@ bool SimplexState::check_dual_feasibility(Float64 tolerance, Float64& max_violat
 Float64 SimplexState::compute_objective_value() const {
     Float64 obj = std_model_->objective_offset();
     for (Index j = 0; j < n_; ++j) {
-        obj += std_model_->get_variable(j).obj_coeff * x_all_[j];
+        if (j >= 0 && j < std_model_->num_variables()) {
+            obj += std_model_->get_variable(j).obj_coeff * x_all_[j];
+        }
     }
     return obj;
 }

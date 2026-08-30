@@ -61,16 +61,17 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
     std::string obj_row_name;
     std::unordered_map<std::string, Index> row_name_to_idx;
     std::unordered_map<std::string, Index> col_name_to_idx;
+    bool in_intorg = false;
 
     while (std::getline(is, line)) {
         line_num++;
         if (line.empty()) continue;
 
-        // Skip comment lines
-        if (line[0] == '*' || line[0] == '$') continue;
-
         std::string trimmed_line = trim(line);
         if (trimmed_line.empty()) continue;
+
+        // Skip comment lines (even if preceded by whitespace)
+        if (trimmed_line[0] == '*' || trimmed_line[0] == '$') continue;
 
         // Check for section headers (unindented or keyword match)
         if (line[0] != ' ' && line[0] != '\t') {
@@ -153,6 +154,18 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
             }
 
             case Section::Columns: {
+                // Check for integer marker lines: 'MARKER' 'INTORG' or 'INTEND'
+                if (line.find("MARKER") != std::string::npos) {
+                    if (line.find("INTORG") != std::string::npos) {
+                        in_intorg = true;
+                        continue;
+                    }
+                    if (line.find("INTEND") != std::string::npos) {
+                        in_intorg = false;
+                        continue;
+                    }
+                }
+
                 // Format: COL_NAME ROW_NAME VAL [ROW_NAME2 VAL2]
                 if (tokens.size() < 3) {
                     last_error_ = "Invalid COLUMNS entry format in " + stream_name;
@@ -165,10 +178,19 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
 
                 auto it = col_name_to_idx.find(cname);
                 if (it == col_name_to_idx.end()) {
-                    col_idx = model.add_variable(cname, 0.0, INFINITY_VAL, 0.0);
+                    VariableType vtype = in_intorg ? VariableType::Binary : VariableType::Continuous;
+                    Float64 ub = in_intorg ? 1.0 : INFINITY_VAL;
+                    col_idx = model.add_variable(cname, 0.0, ub, 0.0, vtype);
                     col_name_to_idx[cname] = col_idx;
                 } else {
                     col_idx = it->second;
+                    if (in_intorg) {
+                        auto& var = model.get_variable(col_idx);
+                        var.type = VariableType::Binary;
+                        if (var.upper_bound == INFINITY_VAL) {
+                            var.upper_bound = 1.0;
+                        }
+                    }
                 }
 
                 for (std::size_t k = 1; k + 1 < tokens.size(); k += 2) {
@@ -267,8 +289,8 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
             }
 
             case Section::Bounds: {
-                // Format: TYPE BOUND_NAME COL_NAME [VAL]
-                if (tokens.size() < 3) {
+                // Format: TYPE BOUND_NAME COL_NAME [VAL] or TYPE COL_NAME [VAL]
+                if (tokens.size() < 2) {
                     last_error_ = "Invalid BOUNDS entry format in " + stream_name;
                     error_line_ = line_num;
                     return Status::InvalidInput;
@@ -276,8 +298,26 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
 
                 std::string btype = tokens[0];
                 std::transform(btype.begin(), btype.end(), btype.begin(), ::toupper);
-                std::string cname = (tokens.size() >= 4) ? tokens[2] : tokens[1];
-                Float64 val = (tokens.size() >= 4) ? std::stod(tokens[3]) : 0.0;
+
+                std::string cname;
+                Float64 val = 0.0;
+
+                if (tokens.size() >= 4) {
+                    cname = tokens[2];
+                    try { val = std::stod(tokens[3]); } catch (...) { val = 0.0; }
+                } else if (tokens.size() == 3) {
+                    if (col_name_to_idx.find(tokens[2]) != col_name_to_idx.end()) {
+                        cname = tokens[2];
+                        val = 0.0;
+                    } else if (col_name_to_idx.find(tokens[1]) != col_name_to_idx.end()) {
+                        cname = tokens[1];
+                        try { val = std::stod(tokens[2]); } catch (...) { val = 0.0; }
+                    } else {
+                        cname = tokens[2];
+                    }
+                } else if (tokens.size() == 2) {
+                    cname = tokens[1];
+                }
 
                 auto cit = col_name_to_idx.find(cname);
                 if (cit == col_name_to_idx.end()) {
@@ -320,6 +360,11 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
             default:
                 break;
         }
+    }
+
+    if (model.num_variables() == 0 && model.num_constraints() == 0) {
+        last_error_ = "MPS parsing produced an empty model (0 variables, 0 constraints) in " + stream_name;
+        return Status::InvalidInput;
     }
 
     return Status::Ok;
