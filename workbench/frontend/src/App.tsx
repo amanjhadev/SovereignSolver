@@ -16,6 +16,8 @@ import { PRESET_MODELS, PresetModel } from './samples/preset_models';
 import { SolveResult, ValidationInfo, BackendHealth, PresetInputType } from './types';
 import { Terminal } from 'lucide-react';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 function WorkbenchMain() {
   const { addToast } = useToast();
 
@@ -48,7 +50,7 @@ function WorkbenchMain() {
   // Poll backend connection health
   const checkBackendHealth = useCallback(async () => {
     try {
-      const res = await fetch('/api/health');
+      const res = await fetch(`${API_BASE_URL}/api/health`);
       if (res.ok) {
         const data = await res.json();
         setHealth({
@@ -120,7 +122,7 @@ function WorkbenchMain() {
     setSolveResult(null);
 
     try {
-      const res = await fetch('/api/validate', {
+      const res = await fetch(`${API_BASE_URL}/api/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -166,7 +168,7 @@ function WorkbenchMain() {
     addToast('info', 'Solve Started', `Solving "${problemName}" with timeout ${timeoutSec}s`);
 
     try {
-      const res = await fetch('/api/solve', {
+      const res = await fetch(`${API_BASE_URL}/api/solve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -392,7 +394,7 @@ function WorkbenchMain() {
   const handleStopSolve = async () => {
     if (activeSolveId) {
       try {
-        await fetch('/api/stop-solve', {
+        await fetch(`${API_BASE_URL}/api/stop-solve`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ solveId: activeSolveId })
@@ -414,7 +416,7 @@ function WorkbenchMain() {
     addToast('info', 'Uploading File', `Processing ${file.name}...`);
 
     try {
-      const res = await fetch('/api/upload-mps', {
+      const res = await fetch(`${API_BASE_URL}/api/upload-mps`, {
         method: 'POST',
         body: formData
       });
