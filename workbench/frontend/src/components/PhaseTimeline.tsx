@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Clock, XCircle, ChevronRight, Activity } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { SolveResult, ValidationInfo } from '../types';
 
 interface PhaseTimelineProps {
@@ -68,54 +68,52 @@ export const PhaseTimeline: React.FC<PhaseTimelineProps> = ({
     { label: 'Presolve', status: getPresolveStatus() },
     { label: 'Root LP', status: getRootLpStatus() },
     { label: 'Heuristics', status: getHeuristicsStatus() },
-    { label: 'B & B', status: getBbStatus() },
-    { label: 'Final', status: getFinalStatus() }
+    { label: 'B&B', status: getBbStatus() },
+    { label: 'Result', status: getFinalStatus() }
   ];
 
-  const renderStatusIcon = (status: PhaseStatus) => {
+  const renderStatusDot = (status: PhaseStatus) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />;
+        return <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>;
       case 'active':
-        return <Activity className="w-3.5 h-3.5 text-amber-400 animate-spin" />;
+        return <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>;
       case 'failed':
-        return <XCircle className="w-3.5 h-3.5 text-rose-400" />;
+        return <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>;
       default:
-        return <Clock className="w-3.5 h-3.5 text-slate-600" />;
+        return <span className="w-1.5 h-1.5 rounded-full bg-slate-700"></span>;
     }
   };
 
-  const getBadgeClass = (status: PhaseStatus) => {
+  const getTextStyle = (status: PhaseStatus) => {
     switch (status) {
       case 'completed':
-        return 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60 font-semibold';
+        return 'text-slate-200 font-medium';
       case 'active':
-        return 'bg-amber-950/80 text-amber-300 border-amber-500/60 font-bold';
+        return 'text-amber-300 font-semibold';
       case 'failed':
-        return 'bg-rose-950/80 text-rose-300 border-rose-700/60 font-semibold';
+        return 'text-rose-400 font-medium';
       default:
-        return 'bg-slate-950 text-slate-500 border-slate-800';
+        return 'text-slate-500';
     }
   };
 
   return (
-    <div className="p-4 border-b border-slate-800 bg-slate-900/40 space-y-2">
-      <div className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-        Solver Phase Execution Timeline
-      </div>
+    <div className="p-3 border-b border-slate-800 bg-slate-900/30 space-y-1.5">
+      <div className="text-[11px] font-semibold text-slate-400">Solver progress</div>
 
-      <div className="flex items-center justify-between overflow-x-auto py-1 font-mono text-[11px] gap-1">
+      <div className="flex items-center overflow-x-auto py-0.5 font-mono text-[11px] gap-1">
         {stages.map((stage, idx) => (
           <React.Fragment key={stage.label}>
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all shrink-0 ${getBadgeClass(
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded border border-slate-800 bg-slate-950 shrink-0 ${getTextStyle(
                 stage.status
               )}`}
             >
-              {renderStatusIcon(stage.status)}
+              {renderStatusDot(stage.status)}
               <span>{stage.label}</span>
             </div>
-            {idx < stages.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-slate-700 shrink-0" />}
+            {idx < stages.length - 1 && <ChevronRight className="w-3 h-3 text-slate-700 shrink-0" />}
           </React.Fragment>
         ))}
       </div>

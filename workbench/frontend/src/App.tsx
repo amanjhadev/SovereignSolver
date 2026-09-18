@@ -33,9 +33,34 @@ function detectModelType(content: string, fallbackMode: PresetInputType): Preset
   return fallbackMode;
 }
 
+const LOCAL_STORAGE_KEY = 'sovereign_saved_benchmarks';
+
+function loadSavedBenchmarks(): PresetModel[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => ({ ...item, isBuiltIn: false }));
+    }
+  } catch (e) {
+    console.error('Failed to load saved benchmarks from localStorage', e);
+  }
+  return [];
+}
+
+function persistSavedBenchmarks(benchmarks: PresetModel[]) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(benchmarks));
+  } catch (e) {
+    console.error('Failed to persist benchmarks to localStorage', e);
+  }
+}
+
 function WorkbenchMain() {
   const { addToast } = useToast();
 
+  const [savedBenchmarks, setSavedBenchmarks] = useState<PresetModel[]>(() => loadSavedBenchmarks());
   const [activePresetId, setActivePresetId] = useState<string>('assignment_4x4');
   const [problemName, setProblemName] = useState<string>('Assignment 4x4');
   const [inputMode, setInputMode] = useState<PresetInputType>('structured');
@@ -110,7 +135,7 @@ function WorkbenchMain() {
     setContent(preset.content);
     setValidationInfo(null);
     setSolveResult(null);
-    addToast('info', 'Preset Loaded', `Loaded preset model "${preset.name}"`);
+    addToast('info', 'Preset Loaded', `Loaded "${preset.name}"`);
   };
 
   const handleNewProblemClick = () => {
@@ -118,13 +143,99 @@ function WorkbenchMain() {
   };
 
   const handleCreateProblem = (name: string, type: PresetInputType, initialContent = '') => {
-    setActivePresetId('');
-    setProblemName(name);
+    const newId = `custom_${Date.now()}`;
+    const defaultBody = initialContent || (type === 'structured'
+      ? `VARIABLES\nx1 binary\nx2 binary\n\nMAXIMIZE\n10 x1 + 15 x2\n\nSUBJECT TO\nc1: 2 x1 + 3 x2 <= 4\n`
+      : `NAME          NEWPROB\nROWS\n N  OBJ\nCOLUMNS\nENDATA\n`);
+
+    const newBenchmark: PresetModel = {
+      id: newId,
+      name: name.trim() || 'New Model',
+      type,
+      content: defaultBody,
+      description: `Created on ${new Date().toLocaleDateString()}`,
+      isBuiltIn: false
+    };
+
+    const updated = [newBenchmark, ...savedBenchmarks];
+    setSavedBenchmarks(updated);
+    persistSavedBenchmarks(updated);
+
+    setActivePresetId(newId);
+    setProblemName(newBenchmark.name);
     setInputMode(type);
-    setContent(initialContent);
+    setContent(defaultBody);
     setValidationInfo(null);
     setSolveResult(null);
-    addToast('success', 'New Problem Created', `Started new problem "${name}"`);
+    addToast('success', 'Problem Created', `Created "${newBenchmark.name}"`);
+  };
+
+  const handleSaveCurrentModel = () => {
+    if (!content.trim()) {
+      addToast('warning', 'Save Benchmark', 'Editor content cannot be empty');
+      return;
+    }
+
+    const effectiveName = problemName.trim() || 'Untitled Model';
+    const isExistingCustom = savedBenchmarks.some((b) => b.id === activePresetId && !b.isBuiltIn);
+
+    let updated: PresetModel[];
+    let targetId = activePresetId;
+
+    if (isExistingCustom) {
+      updated = savedBenchmarks.map((b) =>
+        b.id === activePresetId
+          ? { ...b, name: effectiveName, content, type: inputMode }
+          : b
+      );
+      addToast('success', 'Benchmark Saved', `Updated "${effectiveName}"`);
+    } else {
+      targetId = `custom_${Date.now()}`;
+      const newBenchmark: PresetModel = {
+        id: targetId,
+        name: effectiveName,
+        type: inputMode,
+        content,
+        description: `Saved on ${new Date().toLocaleDateString()}`,
+        isBuiltIn: false
+      };
+      updated = [newBenchmark, ...savedBenchmarks];
+      setActivePresetId(targetId);
+      addToast('success', 'Benchmark Saved', `Saved "${effectiveName}" to workbench benchmarks`);
+    }
+
+    setSavedBenchmarks(updated);
+    persistSavedBenchmarks(updated);
+  };
+
+  const handleDeleteBenchmark = (benchmark: PresetModel) => {
+    if (benchmark.isBuiltIn) {
+      addToast('warning', 'Protected Model', 'Built-in standard benchmarks cannot be deleted');
+      return;
+    }
+
+    const updated = savedBenchmarks.filter((b) => b.id !== benchmark.id);
+    setSavedBenchmarks(updated);
+    persistSavedBenchmarks(updated);
+    addToast('info', 'Benchmark Deleted', `Removed "${benchmark.name}" from saved benchmarks`);
+
+    if (activePresetId === benchmark.id) {
+      if (updated.length > 0) {
+        const next = updated[0];
+        setActivePresetId(next.id);
+        setProblemName(next.name);
+        setInputMode(next.type);
+        setContent(next.content);
+      } else {
+        const fallback = PRESET_MODELS[0];
+        setActivePresetId(fallback.id);
+        setProblemName(fallback.name);
+        setInputMode(fallback.type);
+        setContent(fallback.content);
+      }
+      setValidationInfo(null);
+      setSolveResult(null);
+    }
   };
 
   const handleValidate = async () => {
@@ -448,13 +559,27 @@ function WorkbenchMain() {
       });
       const data = await res.json();
       if (data.success) {
+        const newId = `upload_${Date.now()}`;
+        const cleanName = data.filename.replace(/\.mps|\.gz/g, '');
+        const uploadedModel: PresetModel = {
+          id: newId,
+          name: cleanName,
+          type: 'mps',
+          content: data.content,
+          description: `Uploaded file ${data.filename}`,
+          isBuiltIn: false
+        };
+        const updated = [uploadedModel, ...savedBenchmarks];
+        setSavedBenchmarks(updated);
+        persistSavedBenchmarks(updated);
+
         setInputMode('mps');
         setContent(data.content);
-        setProblemName(data.filename.replace(/\.mps|\.gz/g, ''));
-        setActivePresetId('');
+        setProblemName(cleanName);
+        setActivePresetId(newId);
         setValidationInfo(null);
         setSolveResult(null);
-        addToast('success', 'Upload Successful', `Loaded file "${data.filename}"`);
+        addToast('success', 'Upload Successful', `Loaded "${data.filename}"`);
       } else {
         addToast('error', 'Upload Error', data.error);
       }
@@ -498,7 +623,10 @@ function WorkbenchMain() {
         {/* Left Sidebar */}
         <Sidebar
           activePresetId={activePresetId}
+          builtInPresets={PRESET_MODELS}
+          savedBenchmarks={savedBenchmarks}
           onSelectPreset={handleSelectPreset}
+          onDeleteBenchmark={handleDeleteBenchmark}
           onNewProblem={handleNewProblemClick}
           health={health}
         />
@@ -528,64 +656,77 @@ function WorkbenchMain() {
               onFormatContent={handleFormatContent}
               onClearContent={handleClearContent}
               onLoadExample={handleLoadExample}
+              onSaveBenchmark={handleSaveCurrentModel}
             />
           </div>
 
           {/* Results, Charts & Telemetry Column (5 Cols) */}
-          <div className="col-span-12 lg:col-span-5 h-full overflow-y-auto bg-slate-950/80 border-l border-slate-800 flex flex-col min-w-0 divide-y divide-slate-800/60">
+          <div className="col-span-12 lg:col-span-5 h-full overflow-y-auto bg-slate-900 border-l border-slate-800 flex flex-col min-w-0">
             {/* Solver Log Drawer Toggle Bar */}
-            <div className="p-3 bg-slate-900/60 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-slate-400 font-bold uppercase">RESULTS & TELEMETRY</span>
+            <div className="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">
+              <span className="text-xs font-medium text-slate-400">Results</span>
               <button
                 onClick={() => setIsLogDrawerOpen(true)}
-                className="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-indigo-300 font-mono rounded flex items-center gap-1.5 border border-slate-700 transition-colors"
+                className="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono rounded flex items-center gap-1.5 border border-slate-700 transition-colors"
               >
-                <Terminal className="w-3.5 h-3.5 text-indigo-400" />
-                <span>[ VIEW SOLVER LOG ]</span>
+                <Terminal className="w-3.5 h-3.5 text-slate-400" />
+                <span>Log Drawer</span>
               </button>
             </div>
 
-            {/* Model Summary Card */}
-            <ProblemSummaryCard
-              name={problemName}
-              type={inputMode}
-              telemetry={solveResult?.telemetry}
-              validationInfo={validationInfo}
-            />
+            {/* Results Body: Single Empty State vs Progressively Revealed Components */}
+            {!solveResult && !validationInfo && !isSolving ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 font-sans space-y-2">
+                <div className="text-slate-300 font-medium text-sm">No solution yet</div>
+                <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+                  Load a model from the sidebar or create a new problem, then run <span className="text-slate-200 font-semibold">Solve Model</span>.
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-800">
+                {/* Model Summary Card */}
+                <ProblemSummaryCard
+                  name={problemName}
+                  type={inputMode}
+                  telemetry={solveResult?.telemetry}
+                  validationInfo={validationInfo}
+                />
 
-            {/* Solver Phase Execution Timeline */}
-            <PhaseTimeline
-              validationInfo={validationInfo}
-              result={solveResult}
-              isSolving={isSolving}
-              isValidating={isValidating}
-            />
+                {/* Solver Phase Execution Timeline */}
+                <PhaseTimeline
+                  validationInfo={validationInfo}
+                  result={solveResult}
+                  isSolving={isSolving}
+                  isValidating={isValidating}
+                />
 
-            {/* Primary Result Status & Metric Cards */}
-            <ResultPanel result={solveResult} validationInfo={validationInfo} isSolving={isSolving} />
+                {/* Primary Result Status & Metric Cards */}
+                <ResultPanel result={solveResult} validationInfo={validationInfo} isSolving={isSolving} />
 
-            {/* Solution Summary & Variable Solution Table */}
-            <SolutionTable
-              solution={solveResult?.solution}
-              telemetry={solveResult?.telemetry}
-              statusName={solveResult?.status_name}
-            />
+                {/* Solution Summary & Variable Solution Table */}
+                <SolutionTable
+                  solution={solveResult?.solution}
+                  telemetry={solveResult?.telemetry}
+                  statusName={solveResult?.status_name}
+                />
 
-            {/* Engine Diagnostics & Telemetry Panel */}
-            <TelemetryPanel telemetry={solveResult?.telemetry} />
+                {/* Engine Diagnostics & Telemetry Panel */}
+                <TelemetryPanel telemetry={solveResult?.telemetry} />
 
-            {/* MIP Progress Convergence Chart */}
-            <MipProgressChart
-              history={solveResult?.progressHistory}
-              sense={solveResult?.telemetry?.sense}
-              objective={solveResult?.objective_value}
-              bestBound={solveResult?.best_bound}
-              gap={solveResult?.mip_gap}
-              isSolving={isSolving}
-            />
+                {/* MIP Progress Convergence Chart */}
+                <MipProgressChart
+                  history={solveResult?.progressHistory}
+                  sense={solveResult?.telemetry?.sense}
+                  objective={solveResult?.objective_value}
+                  bestBound={solveResult?.best_bound}
+                  gap={solveResult?.mip_gap}
+                  isSolving={isSolving}
+                />
 
-            {/* Branch and Bound Search Tree */}
-            <BranchAndBoundTree treeNodes={solveResult?.treeNodes} isSolving={isSolving} />
+                {/* Branch and Bound Search Tree */}
+                <BranchAndBoundTree treeNodes={solveResult?.treeNodes} isSolving={isSolving} />
+              </div>
+            )}
           </div>
         </main>
       </div>

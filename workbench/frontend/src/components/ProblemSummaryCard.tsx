@@ -1,5 +1,4 @@
 import React from 'react';
-import { Layers, FileCode, Target, Hash } from 'lucide-react';
 import { SolverTelemetry, ValidationInfo } from '../types';
 
 interface ProblemSummaryCardProps {
@@ -22,58 +21,44 @@ export const ProblemSummaryCard: React.FC<ProblemSummaryCardProps> = ({
   const nnz = telemetry?.nnz ?? validationInfo?.nnz;
   const sense = telemetry?.sense ?? validationInfo?.sense;
 
-  if (vars === undefined && constraints === undefined) {
-    return (
-      <div className="p-3 bg-slate-900/60 border-b border-slate-800 text-xs font-mono text-slate-500 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-indigo-400" />
-          <span className="font-semibold text-slate-300">{name}</span>
-        </div>
-        <span className="uppercase text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-          {type} model
-        </span>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 border-b border-slate-800 bg-slate-900/40 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-indigo-400" />
-          <h4 className="text-xs font-bold text-slate-200 tracking-wide">MODEL SUMMARY</h4>
-        </div>
-        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60 uppercase">
+    <div className="p-3.5 border-b border-slate-800 bg-slate-900/50 space-y-2 text-xs">
+      <div className="flex items-center justify-between text-slate-300">
+        <span className="font-semibold text-slate-200">Model Dimensions</span>
+        <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 uppercase">
           {type}
         </span>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 text-xs font-mono">
-        <div className="bg-slate-950 p-2 rounded border border-slate-800/80">
-          <div className="text-[10px] text-slate-500 font-sans font-semibold">Model Name</div>
-          <div className="text-xs font-bold text-indigo-300 truncate mt-0.5">{name}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+        <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800/80">
+          <div className="text-[10px] text-slate-500 font-sans">Model</div>
+          <div className="font-medium text-slate-200 truncate mt-0.5">{name}</div>
         </div>
 
-        <div className="bg-slate-950 p-2 rounded border border-slate-800/80">
-          <div className="text-[10px] text-slate-500 font-sans font-semibold">Variables</div>
-          <div className="text-xs font-bold text-slate-100 mt-0.5">
-            {vars ?? 'N/A'}{' '}
-            <span className="text-[10px] text-slate-400 font-normal">
-              ({binaries ?? 0} bin, {continuous ?? 0} cont)
-            </span>
+        <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800/80">
+          <div className="text-[10px] text-slate-500 font-sans">Variables</div>
+          <div className="font-medium text-slate-200 mt-0.5">
+            {vars ?? '—'}{' '}
+            {vars !== undefined && (
+              <span className="text-slate-500 font-normal">
+                ({binaries ?? 0}b / {continuous ?? 0}c)
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="bg-slate-950 p-2 rounded border border-slate-800/80">
-          <div className="text-[10px] text-slate-500 font-sans font-semibold">Constraints / NNZ</div>
-          <div className="text-xs font-bold text-slate-100 mt-0.5">
-            {constraints ?? 'N/A'} <span className="text-[10px] text-slate-400 font-normal">({nnz ?? 0} nnz)</span>
+        <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800/80">
+          <div className="text-[10px] text-slate-500 font-sans">Constraints</div>
+          <div className="font-medium text-slate-200 mt-0.5">
+            {constraints ?? '—'}{' '}
+            {nnz !== undefined && <span className="text-slate-500 font-normal">({nnz} nz)</span>}
           </div>
         </div>
 
-        <div className="bg-slate-950 p-2 rounded border border-slate-800/80">
-          <div className="text-[10px] text-slate-500 font-sans font-semibold">Objective Sense</div>
-          <div className="text-xs font-bold text-indigo-400 mt-0.5">{sense ?? 'MINIMIZE'}</div>
+        <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800/80">
+          <div className="text-[10px] text-slate-500 font-sans">Sense</div>
+          <div className="font-medium text-slate-200 mt-0.5">{sense ?? 'MINIMIZE'}</div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Table as TableIcon, CheckCircle2, ArrowUpDown, Filter } from 'lucide-react';
+import { Search, ArrowUpDown } from 'lucide-react';
 import { SolveResult } from '../types';
 
 interface SolutionTableProps {
@@ -8,7 +8,7 @@ interface SolutionTableProps {
   statusName?: string;
 }
 
-export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, telemetry, statusName }) => {
+export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, statusName }) => {
   const [filter, setFilter] = useState('');
   const [showNonZeroOnly, setShowNonZeroOnly] = useState(true);
   const [sortBy, setSortBy] = useState<'name' | 'value'>('name');
@@ -36,71 +36,46 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, telemetr
   }, [rawEntries, filter, showNonZeroOnly, sortBy, sortAsc]);
 
   if (!solution || rawEntries.length === 0) {
-    return (
-      <div className="p-4 border-b border-slate-800 text-slate-500 font-mono text-xs text-center">
-        No primal solution data available for this solve.
-      </div>
-    );
+    return null;
   }
 
-  // Solution Summary metrics
   const nonZeroCount = rawEntries.filter(([_, v]) => Math.abs(v) > 1e-6).length;
   const activeCount = rawEntries.length;
-  const isOptimal = statusName === 'Optimal';
-  const isFeasible = statusName === 'Feasible' || isOptimal;
 
   return (
-    <div className="p-4 border-b border-slate-800 space-y-3">
-      {/* Solution Summary Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+    <div className="p-3.5 border-b border-slate-800 space-y-2.5 text-xs">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <TableIcon className="w-4 h-4 text-indigo-400" />
-          <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Solution Summary</h4>
-          {isFeasible && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-              Integer Feasible ✓
-            </span>
-          )}
+          <span className="font-semibold text-slate-200">Primal Solution</span>
+          <span className="font-mono text-[11px] text-slate-500">
+            ({nonZeroCount} non-zero / {activeCount} total)
+          </span>
         </div>
 
-        <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400">
-          <div>
-            Active Vars: <span className="text-indigo-300 font-bold">{activeCount}</span>
+        {/* Controls */}
+        <div className="flex items-center gap-2 font-mono text-[11px]">
+          <div className="relative w-36">
+            <Search className="w-3 h-3 absolute left-2 top-2 text-slate-500" />
+            <input
+              type="text"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter..."
+              className="w-full bg-slate-950 border border-slate-700 rounded pl-6 pr-2 py-1 text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
           </div>
-          <div>
-            Non-Zero Vars: <span className="text-emerald-400 font-bold">{nonZeroCount}</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Controls Bar: Filter, Non-zero checkbox, Sort toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-        {/* Search input */}
-        <div className="relative w-44">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
-          <input
-            type="text"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search variable..."
-            className="w-full bg-slate-900 border border-slate-800 rounded pl-8 pr-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono placeholder:text-slate-600"
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Show non-zero toggle */}
-          <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-slate-200 text-xs font-mono select-none">
+          <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-slate-200 select-none">
             <input
               type="checkbox"
               checked={showNonZeroOnly}
               onChange={(e) => setShowNonZeroOnly(e.target.checked)}
-              className="accent-indigo-500 rounded cursor-pointer"
+              className="accent-slate-500 rounded cursor-pointer"
             />
-            <span>Show non-zero only</span>
+            <span>Non-zero</span>
           </label>
 
-          {/* Sort selector */}
           <button
             onClick={() => {
               if (sortBy === 'name') {
@@ -110,12 +85,12 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, telemetr
                 setSortAsc(true);
               }
             }}
-            className={`px-2 py-1 rounded font-mono text-[11px] flex items-center gap-1 border transition-colors ${
-              sortBy === 'name' ? 'bg-indigo-950 text-indigo-300 border-indigo-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+            className={`px-2 py-0.5 rounded border flex items-center gap-1 transition-colors ${
+              sortBy === 'name' ? 'bg-slate-800 text-slate-200 border-slate-600' : 'bg-slate-950 text-slate-400 border-slate-800'
             }`}
           >
-            <ArrowUpDown className="w-3 h-3" />
-            Sort Name
+            <ArrowUpDown className="w-2.5 h-2.5" />
+            Name
           </button>
 
           <button
@@ -127,39 +102,39 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, telemetr
                 setSortAsc(false);
               }
             }}
-            className={`px-2 py-1 rounded font-mono text-[11px] flex items-center gap-1 border transition-colors ${
-              sortBy === 'value' ? 'bg-indigo-950 text-indigo-300 border-indigo-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+            className={`px-2 py-0.5 rounded border flex items-center gap-1 transition-colors ${
+              sortBy === 'value' ? 'bg-slate-800 text-slate-200 border-slate-600' : 'bg-slate-950 text-slate-400 border-slate-800'
             }`}
           >
-            <ArrowUpDown className="w-3 h-3" />
-            Sort Value
+            <ArrowUpDown className="w-2.5 h-2.5" />
+            Value
           </button>
         </div>
       </div>
 
-      {/* Solution Table */}
-      <div className="max-h-64 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950">
-        <table className="w-full text-left text-xs font-mono">
-          <thead className="bg-slate-900 text-slate-400 sticky top-0 border-b border-slate-800">
+      {/* Table */}
+      <div className="max-h-56 overflow-y-auto border border-slate-800 rounded bg-slate-950">
+        <table className="w-full text-left font-mono text-xs">
+          <thead className="bg-slate-900 text-slate-400 sticky top-0 border-b border-slate-800 text-[11px]">
             <tr>
-              <th className="py-2 px-3 font-semibold">Variable Name</th>
-              <th className="py-2 px-3 font-semibold text-right">Value</th>
+              <th className="py-1.5 px-3 font-medium">Variable</th>
+              <th className="py-1.5 px-3 font-medium text-right">Value</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
             {filteredEntries.length > 0 ? (
               filteredEntries.map(([varName, val]) => (
-                <tr key={varName} className="hover:bg-slate-900/60 transition-colors">
-                  <td className="py-1.5 px-3 text-indigo-300 font-medium">{varName}</td>
-                  <td className="py-1.5 px-3 text-right font-bold text-slate-100">
+                <tr key={varName} className="hover:bg-slate-900/50 transition-colors">
+                  <td className="py-1 px-3 text-slate-300 font-medium">{varName}</td>
+                  <td className="py-1 px-3 text-right text-slate-100 font-mono">
                     {val.toFixed(6)}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={2} className="py-4 text-center text-slate-500 font-mono">
-                  No matching variables found
+                <td colSpan={2} className="py-3 text-center text-slate-500 font-mono text-[11px]">
+                  No matching variables
                 </td>
               </tr>
             )}

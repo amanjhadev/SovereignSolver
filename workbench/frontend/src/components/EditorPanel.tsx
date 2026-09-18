@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
-import { Play, CheckCircle, Square, Upload, FileCode, Sliders } from 'lucide-react';
-import { PRESET_MODELS, PresetModel } from '../samples/preset_models';
+import { Play, Check, Square, Upload, Bookmark, Code2, Trash2 } from 'lucide-react';
+import { PresetModel } from '../types';
 
 interface EditorPanelProps {
   name: string;
@@ -23,6 +23,7 @@ interface EditorPanelProps {
   onFormatContent?: () => void;
   onClearContent?: () => void;
   onLoadExample?: () => void;
+  onSaveBenchmark?: () => void;
 }
 
 export const EditorPanel: React.FC<EditorPanelProps> = ({
@@ -40,8 +41,10 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   onValidate,
   onSolve,
   onStopSolve,
-  onLoadPreset,
-  onFileUpload
+  onFileUpload,
+  onFormatContent,
+  onClearContent,
+  onSaveBenchmark
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,96 +54,132 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   };
 
+  const lineCount = content ? content.split('\n').length : 0;
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-950 border-r border-slate-800">
-      {/* Top Fixed Toolbar */}
-      <div className="shrink-0 p-4 border-b border-slate-800 space-y-4 bg-slate-950">
-        <div className="flex items-center justify-between gap-4">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => onChangeName(e.target.value)}
-            placeholder="Problem Name (e.g. My Optimization Model)"
-            className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2 text-slate-100 font-semibold text-base focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-600"
-          />
+      {/* Top Toolbar */}
+      <div className="shrink-0 p-3 border-b border-slate-800 bg-slate-900/60 space-y-2.5">
+        {/* Model Name & Primary Actions */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 flex items-center gap-2">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => onChangeName(e.target.value)}
+              placeholder="Model Name"
+              className="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 font-medium text-xs focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-slate-600"
+            />
+          </div>
 
-          {/* Preset Buttons */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">Load Preset:</span>
-            <button
-              onClick={() => onLoadPreset && onLoadPreset(PRESET_MODELS[0])}
-              className="text-xs px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all"
-            >
-              4x4 Assignment
-            </button>
-            <button
-              onClick={() => onLoadPreset && onLoadPreset(PRESET_MODELS[1])}
-              className="text-xs px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all"
-            >
-              Facility Location
-            </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onSaveBenchmark && (
+              <button
+                onClick={onSaveBenchmark}
+                className="px-2.5 py-1 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors"
+                title="Save model to your benchmarks"
+              >
+                <Bookmark className="w-3.5 h-3.5 text-slate-400" />
+                <span>Save</span>
+              </button>
+            )}
+
+            {inputMode === 'structured' && onFormatContent && (
+              <button
+                onClick={onFormatContent}
+                className="px-2.5 py-1 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors"
+                title="Format model sections"
+              >
+                <Code2 className="w-3.5 h-3.5 text-slate-400" />
+                <span>Format</span>
+              </button>
+            )}
+
+            {onClearContent && (
+              <button
+                onClick={onClearContent}
+                className="p-1 rounded border border-slate-800 hover:border-slate-700 text-slate-500 hover:text-slate-300 transition-colors"
+                title="Clear editor content"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Input Mode Selector & Timeout Settings */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+        {/* Input Mode Selector & Timeout Configuration */}
+        <div className="flex items-center justify-between gap-3 text-xs">
+          {/* Format Tabs */}
+          <div className="flex bg-slate-950 rounded border border-slate-800 p-0.5 font-mono text-[11px]">
             <button
               onClick={() => onChangeInputMode('structured')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded transition-colors ${
                 inputMode === 'structured'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-slate-800 text-slate-100 font-medium'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <FileCode className="w-3.5 h-3.5" />
               Structured Model
             </button>
             <button
               onClick={() => onChangeInputMode('mps')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded transition-colors ${
                 inputMode === 'mps'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-slate-800 text-slate-100 font-medium'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Upload className="w-3.5 h-3.5" />
-              MPS File Upload
+              MPS File
             </button>
           </div>
 
-          {/* Timeout Config Slider */}
-          <div className="flex items-center gap-3 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800/80">
-            <Sliders className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-xs text-slate-400 font-mono">Timeout:</span>
+          {/* Timeout Setting */}
+          <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+            <span>Timeout:</span>
             <input
-              type="range"
-              min="5"
-              max="300"
-              step="5"
+              type="number"
+              min="1"
+              max="3600"
               value={timeoutSec}
-              onChange={(e) => onChangeTimeoutSec(Number(e.target.value))}
-              className="w-24 accent-indigo-500 cursor-pointer"
+              onChange={(e) => onChangeTimeoutSec(Math.max(1, Number(e.target.value)))}
+              className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-slate-200 focus:outline-none focus:border-indigo-500"
             />
-            <span className="text-xs font-mono font-bold text-indigo-400 w-10">{timeoutSec}s</span>
+            <span className="text-slate-500">sec</span>
           </div>
         </div>
       </div>
 
-      {/* Independently Scrollable Editor Content Area */}
-      <div className="flex-1 min-h-0 relative flex flex-col p-4 overflow-hidden">
+      {/* Structured Syntax Guide Bar */}
+      {inputMode === 'structured' && (
+        <div className="px-4 py-1.5 bg-slate-950 border-b border-slate-800/80 font-mono text-[11px] text-slate-500 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-slate-400 font-medium">Sections:</span>
+            <span>VARIABLES</span>
+            <span className="text-slate-700">·</span>
+            <span>MINIMIZE / MAXIMIZE</span>
+            <span className="text-slate-700">·</span>
+            <span>SUBJECT TO</span>
+            <span className="text-slate-700">·</span>
+            <span>BOUNDS</span>
+          </div>
+          <div>{lineCount} lines</div>
+        </div>
+      )}
+
+      {/* Editor Content Area */}
+      <div className="flex-1 min-h-0 relative flex flex-col p-3 overflow-hidden">
         {inputMode === 'mps' && (
-          <div className="shrink-0 mb-3 flex items-center justify-between bg-slate-900/80 border border-dashed border-slate-700 p-3 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Upload className="w-5 h-5 text-indigo-400" />
+          <div className="shrink-0 mb-2 flex items-center justify-between bg-slate-900 border border-slate-800 p-2.5 rounded">
+            <div className="flex items-center gap-2">
+              <Upload className="w-4 h-4 text-slate-400" />
               <div>
-                <div className="text-xs font-semibold text-slate-200">Upload MPS or MPS.GZ File</div>
-                <div className="text-[10px] text-slate-500">Supports standard .mps and compressed .mps.gz files</div>
+                <div className="text-xs font-medium text-slate-200">Load MPS / MPS.GZ file</div>
+                <div className="text-[10px] text-slate-500">Standard MPS or gzip-compressed instances</div>
               </div>
             </div>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium transition-all"
+              className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded transition-colors"
             >
               Browse File...
             </button>
@@ -162,47 +201,47 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
               ? `VARIABLES\nx1 binary\nx2 binary\nx3 continuous\n\nMINIMIZE\n5*x1 + 7*x2 + 3*x3\n\nSUBJECT TO\nc1: x1 + x2 >= 1\nc2: x3 <= 10`
               : `NAME          model_name\nROWS\n N  obj\n E  c1\nCOLUMNS\n...`
           }
-          className="flex-1 min-h-0 w-full bg-slate-900 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500/50 resize-none overflow-y-auto transition-all placeholder:text-slate-700"
+          className="flex-1 min-h-0 w-full bg-slate-950 border border-slate-800 rounded p-3.5 font-mono text-xs text-slate-100 leading-relaxed focus:outline-none focus:border-slate-700 resize-none overflow-y-auto placeholder:text-slate-700"
           spellCheck={false}
         />
       </div>
 
-      {/* Sticky Fixed Bottom Action Bar */}
-      <div className="shrink-0 p-4 border-t border-slate-800 flex items-center justify-between bg-slate-900/95 backdrop-blur z-10 shadow-xl">
+      {/* Sticky Bottom Action Bar */}
+      <div className="shrink-0 px-4 py-2.5 border-t border-slate-800 flex items-center justify-between bg-slate-900">
         <div className="flex items-center gap-3">
           <button
             onClick={onValidate}
             disabled={isValidating || isSolving}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium text-xs flex items-center gap-2 transition-all disabled:opacity-50"
+            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
           >
-            <CheckCircle className="w-4 h-4 text-emerald-400" />
-            <span>{isValidating ? 'Validating...' : 'VALIDATE'}</span>
+            <Check className="w-3.5 h-3.5 text-slate-300" />
+            <span>{isValidating ? 'Validating...' : 'Validate'}</span>
           </button>
         </div>
 
         <div className="flex items-center gap-3">
           {isSolving ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-xs font-mono text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded border border-amber-500/20">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                <span>SOLVING... {elapsedSec.toFixed(1)}s</span>
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2 text-xs font-mono text-amber-300 bg-amber-950/60 px-2.5 py-1 rounded border border-amber-800/60">
+                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span>Solving ({elapsedSec.toFixed(1)}s)</span>
               </div>
               <button
                 onClick={onStopSolve}
-                className="px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg font-medium text-xs flex items-center gap-2 transition-all"
+                className="px-3 py-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-800 rounded text-xs font-medium flex items-center gap-1.5 transition-colors"
               >
-                <Square className="w-3.5 h-3.5" />
-                <span>STOP SOLVE</span>
+                <Square className="w-3 h-3" />
+                <span>Stop Solve</span>
               </button>
             </div>
           ) : (
             <button
               onClick={onSolve}
               disabled={!content.trim()}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm"
             >
-              <Play className="w-4 h-4 fill-white" />
-              <span>SOLVE MODEL</span>
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Solve Model</span>
             </button>
           )}
         </div>

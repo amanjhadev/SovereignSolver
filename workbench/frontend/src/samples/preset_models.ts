@@ -9,6 +9,7 @@ export const PRESET_MODELS: PresetModel[] = [
     type: 'structured',
     description: 'Assign 4 jobs to 4 machines minimizing total cost (Optimal = 13.0)',
     varsSummary: 'MILP · 16 vars · 8 cons',
+    isBuiltIn: true,
     content: `VARIABLES
 x11 binary
 x12 binary
@@ -46,6 +47,7 @@ mac4: x14 + x24 + x34 + x44 <= 1`
     type: 'structured',
     description: 'Capacitated Facility Location (5 facilities, 8 customers, Incumbent = 797.0)',
     varsSummary: 'MILP · 45 vars · 13 cons',
+    isBuiltIn: true,
     content: `VARIABLES
 y1 binary
 y2 binary
@@ -123,6 +125,7 @@ cap_5: x51 + x52 + x53 + x54 + x55 + x56 + x57 + x58 - 45*y5 <= 0`
     type: 'mps',
     description: 'Recognized MIPLIB 10teams benchmark instance',
     varsSummary: 'MPS · 2020 cols · 230 rows',
+    isBuiltIn: true,
     content: `NAME          10teams
 ROWS
  N  obj
@@ -144,6 +147,7 @@ ENDATA`
     type: 'mps',
     description: 'MIPLIB control30 benchmark instance',
     varsSummary: 'MPS · 1205 cols · 1056 rows',
+    isBuiltIn: true,
     content: `NAME          control30-3-2-3
 ROWS
  N  obj
@@ -163,6 +167,7 @@ ENDATA`
     type: 'mps',
     description: 'Knapsack benchmark with 18 binary variables and 2 constraints',
     varsSummary: 'MPS · 18 cols · 2 rows',
+    isBuiltIn: true,
     content: `NAME          test_knapsack_18bin
 OBJSENSE
  MIN

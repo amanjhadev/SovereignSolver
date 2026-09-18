@@ -100,4 +100,5 @@ export interface PresetModel {
   content: string;
   varsSummary?: string;
   consSummary?: string;
+  isBuiltIn?: boolean;
 }
