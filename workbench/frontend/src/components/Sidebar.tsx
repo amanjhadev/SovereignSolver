@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, FileCode, Box, Trash2, Lock } from 'lucide-react';
+import { Plus, FileCode, Box, Trash2 } from 'lucide-react';
 import { PresetModel, BackendHealth } from '../types';
 
 interface SidebarProps {
   activePresetId: string;
-  builtInPresets: PresetModel[];
   savedBenchmarks: PresetModel[];
   onSelectPreset: (preset: PresetModel) => void;
   onDeleteBenchmark: (benchmark: PresetModel) => void;
@@ -14,7 +13,6 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activePresetId,
-  builtInPresets,
   savedBenchmarks,
   onSelectPreset,
   onDeleteBenchmark,
@@ -45,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Models List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-4">
+        <div className="flex-1 overflow-y-auto p-2">
           {/* User-Saved Benchmarks */}
           <div>
             <div className="px-2 mb-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
@@ -54,8 +52,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {savedBenchmarks.length === 0 ? (
-              <div className="px-2 py-3 text-[11px] text-slate-500 font-sans italic">
-                No user-saved models. Use Save in the editor to store custom models.
+              <div className="px-2 py-3 text-[11px] text-slate-500 font-sans italic space-y-1">
+                <div>No saved models.</div>
+                <div>Use Save in the editor to store custom models.</div>
               </div>
             ) : (
               <div className="space-y-0.5">
@@ -104,50 +103,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 })}
               </div>
             )}
-          </div>
-
-          {/* Built-in Presets */}
-          <div>
-            <div className="px-2 mb-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-              <span>Standard Benchmarks</span>
-              <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1 font-normal">
-                <Lock className="w-2.5 h-2.5" /> Presets
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              {builtInPresets.map((preset) => {
-                const isActive = activePresetId === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    onClick={() => onSelectPreset(preset)}
-                    className={`w-full text-left rounded px-2.5 py-2 transition-colors flex items-start gap-2.5 ${
-                      isActive
-                        ? 'bg-slate-800 text-slate-100 border-l-2 border-indigo-500'
-                        : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-100'
-                    }`}
-                  >
-                    <div className="mt-0.5 shrink-0 text-slate-400">
-                      {preset.type === 'structured' ? (
-                        <FileCode className="w-3.5 h-3.5 text-slate-400" />
-                      ) : (
-                        <Box className="w-3.5 h-3.5 text-slate-400" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium truncate text-slate-200">{preset.name}</div>
-                      {preset.varsSummary && (
-                        <div className="text-[11px] font-mono text-slate-400 truncate mt-0.5 font-normal">
-                          {preset.varsSummary}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
 

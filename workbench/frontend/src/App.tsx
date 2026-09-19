@@ -41,7 +41,16 @@ function loadSavedBenchmarks(): PresetModel[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.map((item) => ({ ...item, isBuiltIn: false }));
+      return parsed.map((item) => ({
+        id: String(item.id || `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`),
+        name: String(item.name || 'Untitled Model'),
+        type: (item.type === 'mps' ? 'mps' : 'structured') as PresetInputType,
+        description: String(item.description || ''),
+        content: typeof item.content === 'string' ? item.content : '',
+        varsSummary: typeof item.varsSummary === 'string' ? item.varsSummary : undefined,
+        consSummary: typeof item.consSummary === 'string' ? item.consSummary : undefined,
+        isBuiltIn: false
+      }));
     }
   } catch (e) {
     console.error('Failed to load saved benchmarks from localStorage', e);
@@ -61,10 +70,10 @@ function WorkbenchMain() {
   const { addToast } = useToast();
 
   const [savedBenchmarks, setSavedBenchmarks] = useState<PresetModel[]>(() => loadSavedBenchmarks());
-  const [activePresetId, setActivePresetId] = useState<string>('assignment_4x4');
-  const [problemName, setProblemName] = useState<string>('Assignment 4x4');
+  const [activePresetId, setActivePresetId] = useState<string>('');
+  const [problemName, setProblemName] = useState<string>('New Problem');
   const [inputMode, setInputMode] = useState<PresetInputType>('structured');
-  const [content, setContent] = useState<string>(PRESET_MODELS[0].content);
+  const [content, setContent] = useState<string>('');
   const [timeoutSec, setTimeoutSec] = useState<number>(30);
 
   const [isValidating, setIsValidating] = useState<boolean>(false);
@@ -128,14 +137,23 @@ function WorkbenchMain() {
     };
   }, [isSolving]);
 
-  const handleSelectPreset = (preset: PresetModel) => {
-    setActivePresetId(preset.id);
-    setProblemName(preset.name);
-    setInputMode(preset.type);
-    setContent(preset.content);
+  const handleSelectSavedModel = (model: PresetModel) => {
+    const canonical = savedBenchmarks.find((b) => b.id === model.id) || model;
+    if (!canonical) return;
+
+    setActivePresetId(canonical.id);
+    setProblemName(canonical.name);
+    setInputMode(canonical.type);
+    setContent(canonical.content ?? '');
+
+    // Fully clear transient run state (Section 3)
     setValidationInfo(null);
     setSolveResult(null);
-    addToast('info', 'Preset Loaded', `Loaded "${preset.name}"`);
+    setActiveSolveId(null);
+    setElapsedSec(0);
+    setIsSolving(false);
+
+    addToast('info', 'Model Loaded', `Loaded "${canonical.name}"`);
   };
 
   const handleNewProblemClick = () => {
@@ -167,6 +185,9 @@ function WorkbenchMain() {
     setContent(defaultBody);
     setValidationInfo(null);
     setSolveResult(null);
+    setActiveSolveId(null);
+    setElapsedSec(0);
+    setIsSolving(false);
     addToast('success', 'Problem Created', `Created "${newBenchmark.name}"`);
   };
 
@@ -209,11 +230,6 @@ function WorkbenchMain() {
   };
 
   const handleDeleteBenchmark = (benchmark: PresetModel) => {
-    if (benchmark.isBuiltIn) {
-      addToast('warning', 'Protected Model', 'Built-in standard benchmarks cannot be deleted');
-      return;
-    }
-
     const updated = savedBenchmarks.filter((b) => b.id !== benchmark.id);
     setSavedBenchmarks(updated);
     persistSavedBenchmarks(updated);
@@ -225,16 +241,18 @@ function WorkbenchMain() {
         setActivePresetId(next.id);
         setProblemName(next.name);
         setInputMode(next.type);
-        setContent(next.content);
+        setContent(next.content ?? '');
       } else {
-        const fallback = PRESET_MODELS[0];
-        setActivePresetId(fallback.id);
-        setProblemName(fallback.name);
-        setInputMode(fallback.type);
-        setContent(fallback.content);
+        setActivePresetId('');
+        setProblemName('New Problem');
+        setInputMode('structured');
+        setContent('');
       }
       setValidationInfo(null);
       setSolveResult(null);
+      setActiveSolveId(null);
+      setElapsedSec(0);
+      setIsSolving(false);
     }
   };
 
@@ -609,10 +627,6 @@ function WorkbenchMain() {
     }
   };
 
-  const handleLoadExample = () => {
-    handleSelectPreset(PRESET_MODELS[0]);
-  };
-
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
       {/* Top Application Bar */}
@@ -623,9 +637,8 @@ function WorkbenchMain() {
         {/* Left Sidebar */}
         <Sidebar
           activePresetId={activePresetId}
-          builtInPresets={PRESET_MODELS}
           savedBenchmarks={savedBenchmarks}
-          onSelectPreset={handleSelectPreset}
+          onSelectPreset={handleSelectSavedModel}
           onDeleteBenchmark={handleDeleteBenchmark}
           onNewProblem={handleNewProblemClick}
           health={health}
@@ -651,11 +664,9 @@ function WorkbenchMain() {
               onValidate={handleValidate}
               onSolve={handleSolve}
               onStopSolve={handleStopSolve}
-              onLoadPreset={handleSelectPreset}
               onFileUpload={handleFileUpload}
               onFormatContent={handleFormatContent}
               onClearContent={handleClearContent}
-              onLoadExample={handleLoadExample}
               onSaveBenchmark={handleSaveCurrentModel}
             />
           </div>

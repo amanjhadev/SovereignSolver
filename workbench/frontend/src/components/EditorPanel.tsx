@@ -18,11 +18,9 @@ interface EditorPanelProps {
   onValidate: () => void;
   onSolve: () => void;
   onStopSolve: () => void;
-  onLoadPreset?: (preset: PresetModel) => void;
   onFileUpload: (file: File) => void;
   onFormatContent?: () => void;
   onClearContent?: () => void;
-  onLoadExample?: () => void;
   onSaveBenchmark?: () => void;
 }
 
