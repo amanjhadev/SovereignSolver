@@ -12,9 +12,8 @@ import { MipProgressChart } from './components/MipProgressChart';
 import { BranchAndBoundTree } from './components/BranchAndBoundTree';
 import { SolverLogDrawer } from './components/SolverLogDrawer';
 import { NewProblemModal } from './components/NewProblemModal';
-import { PRESET_MODELS, PresetModel } from './samples/preset_models';
-import { SolveResult, ValidationInfo, BackendHealth, PresetInputType } from './types';
-import { Terminal } from 'lucide-react';
+import { SolveResult, ValidationInfo, BackendHealth, PresetInputType, PresetModel } from './types';
+import { Terminal, Crosshair } from 'lucide-react';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -53,7 +52,7 @@ function loadSavedBenchmarks(): PresetModel[] {
       }));
     }
   } catch (e) {
-    console.error('Failed to load saved benchmarks from localStorage', e);
+    console.error('Failed to load saved models from localStorage', e);
   }
   return [];
 }
@@ -62,7 +61,7 @@ function persistSavedBenchmarks(benchmarks: PresetModel[]) {
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(benchmarks));
   } catch (e) {
-    console.error('Failed to persist benchmarks to localStorage', e);
+    console.error('Failed to persist models to localStorage', e);
   }
 }
 
@@ -146,7 +145,7 @@ function WorkbenchMain() {
     setInputMode(canonical.type);
     setContent(canonical.content ?? '');
 
-    // Fully clear transient run state (Section 3)
+    // Fully clear transient run state
     setValidationInfo(null);
     setSolveResult(null);
     setActiveSolveId(null);
@@ -188,12 +187,12 @@ function WorkbenchMain() {
     setActiveSolveId(null);
     setElapsedSec(0);
     setIsSolving(false);
-    addToast('success', 'Problem Created', `Created "${newBenchmark.name}"`);
+    addToast('success', 'Model Created', `Created "${newBenchmark.name}"`);
   };
 
   const handleSaveCurrentModel = () => {
     if (!content.trim()) {
-      addToast('warning', 'Save Benchmark', 'Editor content cannot be empty');
+      addToast('warning', 'Save Model', 'Editor content cannot be empty');
       return;
     }
 
@@ -209,7 +208,7 @@ function WorkbenchMain() {
           ? { ...b, name: effectiveName, content, type: inputMode }
           : b
       );
-      addToast('success', 'Benchmark Saved', `Updated "${effectiveName}"`);
+      addToast('success', 'Model Saved', `Updated "${effectiveName}"`);
     } else {
       targetId = `custom_${Date.now()}`;
       const newBenchmark: PresetModel = {
@@ -222,7 +221,7 @@ function WorkbenchMain() {
       };
       updated = [newBenchmark, ...savedBenchmarks];
       setActivePresetId(targetId);
-      addToast('success', 'Benchmark Saved', `Saved "${effectiveName}" to workbench benchmarks`);
+      addToast('success', 'Model Saved', `Saved "${effectiveName}" to Saved Models`);
     }
 
     setSavedBenchmarks(updated);
@@ -233,7 +232,7 @@ function WorkbenchMain() {
     const updated = savedBenchmarks.filter((b) => b.id !== benchmark.id);
     setSavedBenchmarks(updated);
     persistSavedBenchmarks(updated);
-    addToast('info', 'Benchmark Deleted', `Removed "${benchmark.name}" from saved benchmarks`);
+    addToast('info', 'Model Deleted', `Removed "${benchmark.name}" from saved models`);
 
     if (activePresetId === benchmark.id) {
       if (updated.length > 0) {
@@ -387,7 +386,6 @@ function WorkbenchMain() {
             break;
 
           case 'node_created':
-            // Tree Invariant Checks (Phase 7)
             if (eventData.node_id !== 0 && eventData.parent_id !== -1) {
               const parent = accumulatedNodes.find((n) => n.id === eventData.parent_id);
               if (!parent) {
@@ -506,7 +504,7 @@ function WorkbenchMain() {
             const jsonStr = payloadStr.substring(14).trim();
             const finalResult: SolveResult = JSON.parse(jsonStr);
 
-            // Reconcile final result with telemetry events (Phase 10)
+            // Reconcile final result with telemetry events
             finalResult.progressHistory = accumulatedCheckpoints;
             finalResult.treeNodes = accumulatedNodes;
             finalResult.logs = accumulatedLogs;
@@ -628,13 +626,13 @@ function WorkbenchMain() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#07090d] text-slate-100 font-sans">
       {/* Top Application Bar */}
       <TopBar health={health} />
 
-      {/* Main Content Workspace */}
+      {/* Main Content Three-Zone Workspace */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
+        {/* Left Sidebar: Saved Models Project Explorer */}
         <Sidebar
           activePresetId={activePresetId}
           savedBenchmarks={savedBenchmarks}
@@ -644,9 +642,9 @@ function WorkbenchMain() {
           health={health}
         />
 
-        {/* Central Model Editor & Right Results Panel */}
+        {/* Central Model Editor & Right Results Analysis Console */}
         <main className="flex-1 grid grid-cols-12 h-full overflow-hidden">
-          {/* Model Editor Column (7 Cols) */}
+          {/* Model Formulation / Editor Column (7 Cols on desktop) */}
           <div className="col-span-12 lg:col-span-7 h-full flex flex-col min-w-0">
             <EditorPanel
               name={problemName}
@@ -671,31 +669,36 @@ function WorkbenchMain() {
             />
           </div>
 
-          {/* Results, Charts & Telemetry Column (5 Cols) */}
-          <div className="col-span-12 lg:col-span-5 h-full overflow-y-auto bg-slate-900 border-l border-slate-800 flex flex-col min-w-0">
-            {/* Solver Log Drawer Toggle Bar */}
-            <div className="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">
-              <span className="text-xs font-medium text-slate-400">Results</span>
+          {/* Results, Diagnostics & Telemetry Column (5 Cols on desktop) */}
+          <div className="col-span-12 lg:col-span-5 h-full overflow-y-auto bg-[#07090d] border-l border-white/[0.08] flex flex-col min-w-0">
+            {/* Header: Results Title & Log Drawer Trigger */}
+            <div className="p-3 bg-[#0a0e16] border-b border-white/[0.08] flex items-center justify-between shrink-0">
+              <span className="text-xs font-semibold text-slate-300 tracking-tight">Optimization Results</span>
               <button
                 onClick={() => setIsLogDrawerOpen(true)}
-                className="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono rounded flex items-center gap-1.5 border border-slate-700 transition-colors"
+                className="px-2.5 py-1 text-xs bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 font-mono rounded-[4px] flex items-center gap-1.5 border border-white/[0.08] transition-colors"
+                title="Open real-time solver log console"
               >
                 <Terminal className="w-3.5 h-3.5 text-slate-400" />
-                <span>Log Drawer</span>
+                <span>Log Stream</span>
               </button>
             </div>
 
             {/* Results Body: Single Empty State vs Progressively Revealed Components */}
             {!solveResult && !validationInfo && !isSolving ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 font-sans space-y-2">
-                <div className="text-slate-300 font-medium text-sm">No solution yet</div>
-                <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                  Load a model from the sidebar or create a new problem, then run <span className="text-slate-200 font-semibold">Solve Model</span>.
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 font-sans space-y-3">
+                <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
+                  <Crosshair className="w-4 h-4 text-slate-600" />
+                </div>
+                <div className="text-slate-300 font-medium text-sm tracking-tight">No solution yet</div>
+                <p className="text-xs text-slate-500 max-w-xs leading-relaxed font-sans">
+                  Select a model from the sidebar or define equations in the editor, then click{' '}
+                  <span className="text-slate-200 font-medium">Solve Model</span>.
                 </p>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-800">
-                {/* Model Summary Card */}
+              <div className="flex-1 overflow-y-auto divide-y divide-white/[0.06]">
+                {/* 1. Model Summary Card */}
                 <ProblemSummaryCard
                   name={problemName}
                   type={inputMode}
@@ -703,7 +706,7 @@ function WorkbenchMain() {
                   validationInfo={validationInfo}
                 />
 
-                {/* Solver Phase Execution Timeline */}
+                {/* 2. Solver Phase Execution Timeline */}
                 <PhaseTimeline
                   validationInfo={validationInfo}
                   result={solveResult}
@@ -711,20 +714,20 @@ function WorkbenchMain() {
                   isValidating={isValidating}
                 />
 
-                {/* Primary Result Status & Metric Cards */}
+                {/* 3. Primary Solution Result & Metrics */}
                 <ResultPanel result={solveResult} validationInfo={validationInfo} isSolving={isSolving} />
 
-                {/* Solution Summary & Variable Solution Table */}
+                {/* 4. Primal Solution Variable Table */}
                 <SolutionTable
                   solution={solveResult?.solution}
                   telemetry={solveResult?.telemetry}
                   statusName={solveResult?.status_name}
                 />
 
-                {/* Engine Diagnostics & Telemetry Panel */}
+                {/* 5. Engine Diagnostics Panel */}
                 <TelemetryPanel telemetry={solveResult?.telemetry} />
 
-                {/* MIP Progress Convergence Chart */}
+                {/* 6. MIP Convergence Trajectory Chart */}
                 <MipProgressChart
                   history={solveResult?.progressHistory}
                   sense={solveResult?.telemetry?.sense}
@@ -734,7 +737,7 @@ function WorkbenchMain() {
                   isSolving={isSolving}
                 />
 
-                {/* Branch and Bound Search Tree */}
+                {/* 7. Branch and Bound Search Tree */}
                 <BranchAndBoundTree treeNodes={solveResult?.treeNodes} isSolving={isSolving} />
               </div>
             )}

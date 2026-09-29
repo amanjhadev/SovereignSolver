@@ -46,6 +46,7 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
     enum class Section {
         None,
         Name,
+        ObjSense,
         Rows,
         Columns,
         Rhs,
@@ -85,6 +86,22 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
                     std::string model_name = (tokens.size() > 1) ? tokens[1] : "mps_model";
                     model.set_name(model_name);
                     continue;
+                } else if (header == "OBJSENSE") {
+                    section = Section::ObjSense;
+                    if (tokens.size() > 1) {
+                        std::string sense_str = tokens[1];
+                        std::transform(sense_str.begin(), sense_str.end(), sense_str.begin(), ::toupper);
+                        if (sense_str == "MAX" || sense_str == "MAXIMIZE") {
+                            model.set_objective_sense(ObjectiveSense::Maximize);
+                        } else if (sense_str == "MIN" || sense_str == "MINIMIZE") {
+                            model.set_objective_sense(ObjectiveSense::Minimize);
+                        } else {
+                            last_error_ = "Unknown OBJSENSE value '" + sense_str + "' in " + stream_name;
+                            error_line_ = line_num;
+                            return Status::InvalidInput;
+                        }
+                    }
+                    continue;
                 } else if (header == "ROWS") {
                     section = Section::Rows;
                     continue;
@@ -115,6 +132,23 @@ Status MPSParser::parse_stream(std::istream& is, LPModel& model, const std::stri
         if (tokens.empty()) continue;
 
         switch (section) {
+            case Section::ObjSense: {
+                if (!tokens.empty()) {
+                    std::string sense_str = tokens[0];
+                    std::transform(sense_str.begin(), sense_str.end(), sense_str.begin(), ::toupper);
+                    if (sense_str == "MAX" || sense_str == "MAXIMIZE") {
+                        model.set_objective_sense(ObjectiveSense::Maximize);
+                    } else if (sense_str == "MIN" || sense_str == "MINIMIZE") {
+                        model.set_objective_sense(ObjectiveSense::Minimize);
+                    } else {
+                        last_error_ = "Unknown OBJSENSE value '" + sense_str + "' in " + stream_name;
+                        error_line_ = line_num;
+                        return Status::InvalidInput;
+                    }
+                }
+                break;
+            }
+
             case Section::Rows: {
                 // Format: TYPE ROW_NAME
                 if (tokens.size() < 2) {

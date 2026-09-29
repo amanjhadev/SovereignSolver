@@ -32,7 +32,6 @@ public:
 private:
     // Internal Phase I auxiliary problem solver using Primal Simplex
     SimplexStatus solve_phase_1(const LPModel& std_model, LPModel& phase2_model, SimplexState& state, Int64& total_iters);
-    SimplexStatus solve_warm_phase_1(const LPModel& std_model, const Basis& warm_start_basis, LPModel& phase2_model, SimplexState& state, Int64& total_iters);
 
     // Internal Phase II optimization solver using Dual Simplex
     SimplexStatus solve_phase_2(SimplexState& state, Int64& total_iters);

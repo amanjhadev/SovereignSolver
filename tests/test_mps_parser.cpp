@@ -100,3 +100,81 @@ ENDATA
     EXPECT_EQ(static_cast<int>(var2.type), static_cast<int>(sovereign::VariableType::Continuous));
 }
 
+TEST_CASE(MPSParserObjectiveSenseMaximizeTwoLine) {
+    std::string mps_data = R"(
+NAME          TEST_MAX
+OBJSENSE
+  MAX
+ROWS
+ N  COST
+ L  ROW1
+COLUMNS
+    X1        COST      5.0   ROW1      1.0
+RHS
+    RHS1      ROW1      1.0
+BOUNDS
+ BV BND       X1
+ENDATA
+)";
+
+    std::istringstream iss(mps_data);
+    sovereign::lp::LPModel model;
+    sovereign::lp::MPSParser parser;
+
+    auto status = parser.parse_stream(iss, model, "objsense_max_stream");
+    EXPECT_STATUS_OK(status);
+    EXPECT_EQ(model.name(), "TEST_MAX");
+    EXPECT_EQ(static_cast<int>(model.objective_sense()), static_cast<int>(sovereign::ObjectiveSense::Maximize));
+}
+
+TEST_CASE(MPSParserObjectiveSenseMaximizeSingleLine) {
+    std::string mps_data = R"(
+NAME          TEST_MAX_INLINE
+OBJSENSE MAX
+ROWS
+ N  COST
+ L  ROW1
+COLUMNS
+    X1        COST      5.0   ROW1      1.0
+RHS
+    RHS1      ROW1      1.0
+BOUNDS
+ BV BND       X1
+ENDATA
+)";
+
+    std::istringstream iss(mps_data);
+    sovereign::lp::LPModel model;
+    sovereign::lp::MPSParser parser;
+
+    auto status = parser.parse_stream(iss, model, "objsense_inline_stream");
+    EXPECT_STATUS_OK(status);
+    EXPECT_EQ(static_cast<int>(model.objective_sense()), static_cast<int>(sovereign::ObjectiveSense::Maximize));
+}
+
+TEST_CASE(MPSParserObjectiveSenseMinimize) {
+    std::string mps_data = R"(
+NAME          TEST_MIN
+OBJSENSE
+  MIN
+ROWS
+ N  COST
+ L  ROW1
+COLUMNS
+    X1        COST      5.0   ROW1      1.0
+RHS
+    RHS1      ROW1      1.0
+BOUNDS
+ BV BND       X1
+ENDATA
+)";
+
+    std::istringstream iss(mps_data);
+    sovereign::lp::LPModel model;
+    sovereign::lp::MPSParser parser;
+
+    auto status = parser.parse_stream(iss, model, "objsense_min_stream");
+    EXPECT_STATUS_OK(status);
+    EXPECT_EQ(static_cast<int>(model.objective_sense()), static_cast<int>(sovereign::ObjectiveSense::Minimize));
+}
+

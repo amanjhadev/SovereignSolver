@@ -6,6 +6,8 @@
 #include "sovereign/milp/mir_cut.hpp"
 #include "sovereign/milp/cover_cut.hpp"
 #include "sovereign/milp/feasibility_pump.hpp"
+#include "sovereign/lp/dual_simplex.hpp"
+#include "sovereign/lp/mps_parser.hpp"
 #include <vector>
 #include <cmath>
 
@@ -443,3 +445,138 @@ TEST_CASE(Batch8MILPIntegrationWithCuts) {
     EXPECT_NEAR(res.best_bound, -3.0, 1e-3);
     EXPECT_NEAR(res.mip_gap, 0.0, 1e-3);
 }
+
+TEST_CASE(DualSimplexWarmStartReoptimizationBoundTightening) {
+    // LP: min -x1 - x2 s.t. 2*x1 + x2 <= 5, x1 + 2*x2 <= 5, 0 <= x1, x2 <= 10
+    // Continuous root optimum: x1 = 5/3 (1.66667), x2 = 5/3, obj = -10/3 (-3.33333)
+    LPModel model("root_model");
+    Index x1 = model.add_variable("x1", 0.0, 10.0, -1.0);
+    Index x2 = model.add_variable("x2", 0.0, 10.0, -1.0);
+
+    std::vector<Index> c1 = {x1, x2};
+    std::vector<Float64> v1 = {2.0, 1.0};
+    model.add_constraint("row1", ConstraintSense::LessEqual, 5.0, c1, v1);
+
+    std::vector<Index> c2 = {x1, x2};
+    std::vector<Float64> v2 = {1.0, 2.0};
+    model.add_constraint("row2", ConstraintSense::LessEqual, 5.0, c2, v2);
+
+    DualSimplexSolver solver;
+    SimplexResult root_res = solver.solve(model);
+    EXPECT_EQ(static_cast<int>(root_res.status), static_cast<int>(SimplexStatus::Optimal));
+    EXPECT_NEAR(root_res.primal_solution[x1], 5.0 / 3.0, 1e-5);
+    EXPECT_NEAR(root_res.primal_solution[x2], 5.0 / 3.0, 1e-5);
+    EXPECT_NEAR(root_res.objective_value, -10.0 / 3.0, 1e-5);
+
+    // Tighten child bound: x1 <= 1.0 (branch floor)
+    LPModel child_model = model;
+    child_model.get_variable(x1).upper_bound = 1.0;
+
+    SimplexResult child_res = solver.solve(child_model, root_res.basis);
+    EXPECT_EQ(static_cast<int>(child_res.status), static_cast<int>(SimplexStatus::Optimal));
+    // Must respect the newly imposed upper bound x1 <= 1.0
+    EXPECT_TRUE(child_res.primal_solution[x1] <= 1.0 + 1e-6);
+    // At x1 = 1, x2 = (5 - 1)/2 = 2, obj = -3.0
+    EXPECT_NEAR(child_res.primal_solution[x1], 1.0, 1e-4);
+    EXPECT_NEAR(child_res.primal_solution[x2], 2.0, 1e-4);
+    EXPECT_NEAR(child_res.objective_value, -3.0, 1e-4);
+}
+
+TEST_CASE(MILPBranchAndBoundConvergenceRegression) {
+    // Pure B&B test with all heuristics and cuts disabled to ensure branch-and-bound warm start converges
+    MILPModel model("pure_bb_convergence", ObjectiveSense::Minimize);
+    Index x1 = model.add_variable("x1", 0.0, 10.0, -1.0, VariableType::Integer);
+    Index x2 = model.add_variable("x2", 0.0, 10.0, -1.0, VariableType::Integer);
+
+    std::vector<Index> c1 = {x1, x2};
+    std::vector<Float64> v1 = {2.0, 1.0};
+    model.add_constraint("row1", ConstraintSense::LessEqual, 5.0, c1, v1);
+
+    std::vector<Index> c2 = {x1, x2};
+    std::vector<Float64> v2 = {1.0, 2.0};
+    model.add_constraint("row2", ConstraintSense::LessEqual, 5.0, c2, v2);
+
+    MILPConfig config;
+    config.enable_cuts = false;
+    config.enable_feasibility_pump = false;
+    config.enable_diving = false;
+
+    MILPSolver solver(config);
+    MILPResult res = solver.solve(model);
+
+    EXPECT_EQ(static_cast<int>(res.status), static_cast<int>(MILPStatus::Optimal));
+    EXPECT_NEAR(res.objective_value, -3.0, 1e-3);
+    EXPECT_NEAR(res.best_bound, -3.0, 1e-3);
+    EXPECT_NEAR(res.mip_gap, 0.0, 1e-3);
+    // Before fix, this took 23,718 nodes due to warm-start restoring parent fractional state.
+    EXPECT_TRUE(res.nodes_explored <= 10);
+}
+
+TEST_CASE(MILPObjectiveSenseMaximizationEndToEnd) {
+    // MILP: max 5*x1 + 3*x2 s.t. 2*x1 + 2*x2 <= 3, x1, x2 binary
+    // Feasible binary solutions:
+    // (0, 0) -> obj 0
+    // (1, 0) -> obj 5 (feasible: 2 <= 3)
+    // (0, 1) -> obj 3 (feasible: 2 <= 3)
+    // (1, 1) -> infeasible: 4 > 3
+    // Optimum: obj = 5.0 at (1, 0)
+    MILPModel model("max_knapsack", ObjectiveSense::Maximize);
+    Index x1 = model.add_variable("x1", 0.0, 1.0, 5.0, VariableType::Binary);
+    Index x2 = model.add_variable("x2", 0.0, 1.0, 3.0, VariableType::Binary);
+
+    std::vector<Index> cols = {x1, x2};
+    std::vector<Float64> vals = {2.0, 2.0};
+    model.add_constraint("cap", ConstraintSense::LessEqual, 3.0, cols, vals);
+
+    MILPSolver solver;
+    MILPResult res = solver.solve(model);
+
+    EXPECT_EQ(static_cast<int>(res.status), static_cast<int>(MILPStatus::Optimal));
+    EXPECT_NEAR(res.objective_value, 5.0, 1e-4);
+    EXPECT_NEAR(res.best_bound, 5.0, 1e-4);
+    EXPECT_NEAR(res.mip_gap, 0.0, 1e-4);
+    EXPECT_NEAR(res.primal_solution[x1], 1.0, 1e-4);
+    EXPECT_NEAR(res.primal_solution[x2], 0.0, 1e-4);
+}
+
+TEST_CASE(MILPMPSParserMaximizationEndToEnd) {
+    std::string mps_data = R"(
+NAME          MAX_KNAPSACK_MPS
+OBJSENSE
+  MAX
+ROWS
+ N  OBJ
+ L  CAP
+COLUMNS
+    MARK0000  'MARKER'                 'INTORG'
+    X1        OBJ       5.0   CAP       2.0
+    X2        OBJ       3.0   CAP       2.0
+    MARK0001  'MARKER'                 'INTEND'
+RHS
+    RHS1      CAP       3.0
+BOUNDS
+ BV BND       X1
+ BV BND       X2
+ENDATA
+)";
+
+    std::istringstream iss(mps_data);
+    sovereign::lp::LPModel lp_model;
+    sovereign::lp::MPSParser parser;
+
+    auto status = parser.parse_stream(iss, lp_model, "max_mps_stream");
+    EXPECT_STATUS_OK(status);
+    EXPECT_EQ(static_cast<int>(lp_model.objective_sense()), static_cast<int>(sovereign::ObjectiveSense::Maximize));
+
+    sovereign::milp::MILPModel milp_model(lp_model);
+    EXPECT_EQ(static_cast<int>(milp_model.objective_sense()), static_cast<int>(sovereign::ObjectiveSense::Maximize));
+
+    sovereign::milp::MILPSolver solver;
+    auto res = solver.solve(milp_model);
+
+    EXPECT_EQ(static_cast<int>(res.status), static_cast<int>(sovereign::milp::MILPStatus::Optimal));
+    EXPECT_NEAR(res.objective_value, 5.0, 1e-4);
+    EXPECT_NEAR(res.best_bound, 5.0, 1e-4);
+    EXPECT_NEAR(res.mip_gap, 0.0, 1e-4);
+}
+

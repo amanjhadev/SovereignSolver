@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ArrowUpDown } from 'lucide-react';
+import { Search, ArrowUpDown, Copy, Check } from 'lucide-react';
 import { SolveResult } from '../types';
 
 interface SolutionTableProps {
@@ -8,11 +8,12 @@ interface SolutionTableProps {
   statusName?: string;
 }
 
-export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, statusName }) => {
+export const SolutionTable: React.FC<SolutionTableProps> = ({ solution }) => {
   const [filter, setFilter] = useState('');
   const [showNonZeroOnly, setShowNonZeroOnly] = useState(true);
   const [sortBy, setSortBy] = useState<'name' | 'value'>('name');
   const [sortAsc, setSortAsc] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   const rawEntries = useMemo(() => {
     if (!solution) return [];
@@ -35,6 +36,14 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, statusNa
       });
   }, [rawEntries, filter, showNonZeroOnly, sortBy, sortAsc]);
 
+  const handleCopySolution = () => {
+    if (!solution) return;
+    const text = filteredEntries.map(([k, v]) => `${k} = ${v}`).join('\n');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (!solution || rawEntries.length === 0) {
     return null;
   }
@@ -43,37 +52,50 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, statusNa
   const activeCount = rawEntries.length;
 
   return (
-    <div className="p-3.5 border-b border-slate-800 space-y-2.5 text-xs">
-      {/* Header */}
+    <div className="p-3.5 border-b border-white/[0.08] space-y-2.5 text-xs text-slate-200">
+      {/* Header & Inspector Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-200">Primal Solution</span>
-          <span className="font-mono text-[11px] text-slate-500">
+          <span className="font-semibold text-white tracking-tight">Primal Solution</span>
+          <span className="font-mono text-[11px] text-slate-400">
             ({nonZeroCount} non-zero / {activeCount} total)
           </span>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center gap-2 font-mono text-[11px]">
-          <div className="relative w-36">
-            <Search className="w-3 h-3 absolute left-2 top-2 text-slate-500" />
-            <input
-              type="text"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="Filter..."
-              className="w-full bg-slate-950 border border-slate-700 rounded pl-6 pr-2 py-1 text-slate-200 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
+        {/* Copy / Export Button */}
+        <button
+          onClick={handleCopySolution}
+          className="flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-slate-200 border border-white/[0.08] transition-colors font-mono text-[10px]"
+          title="Copy visible variables to clipboard"
+        >
+          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+          <span>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      </div>
 
+      {/* Filter and Sorting Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]">
+        {/* Search Input */}
+        <div className="relative w-36 sm:w-44">
+          <Search className="w-3 h-3 absolute left-2.5 top-2 text-slate-500" />
+          <input
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search variable..."
+            className="w-full bg-[#06080c] border border-white/[0.10] rounded-[5px] pl-7 pr-2 py-1 text-slate-200 focus:outline-none focus:border-white/30 text-xs"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
           <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-slate-200 select-none">
             <input
               type="checkbox"
               checked={showNonZeroOnly}
               onChange={(e) => setShowNonZeroOnly(e.target.checked)}
-              className="accent-slate-500 rounded cursor-pointer"
+              className="accent-slate-400 rounded cursor-pointer w-3.5 h-3.5"
             />
-            <span>Non-zero</span>
+            <span className="font-sans text-[11px]">Non-zero</span>
           </label>
 
           <button
@@ -85,12 +107,14 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, statusNa
                 setSortAsc(true);
               }
             }}
-            className={`px-2 py-0.5 rounded border flex items-center gap-1 transition-colors ${
-              sortBy === 'name' ? 'bg-slate-800 text-slate-200 border-slate-600' : 'bg-slate-950 text-slate-400 border-slate-800'
+            className={`px-2 py-0.5 rounded-[4px] border flex items-center gap-1 transition-colors ${
+              sortBy === 'name'
+                ? 'bg-white/[0.10] text-white border-white/[0.18]'
+                : 'bg-[#06080c] text-slate-400 border-white/[0.06] hover:text-slate-200'
             }`}
           >
             <ArrowUpDown className="w-2.5 h-2.5" />
-            Name
+            <span>Name {sortBy === 'name' ? (sortAsc ? '▲' : '▼') : ''}</span>
           </button>
 
           <button
@@ -102,38 +126,40 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution, statusNa
                 setSortAsc(false);
               }
             }}
-            className={`px-2 py-0.5 rounded border flex items-center gap-1 transition-colors ${
-              sortBy === 'value' ? 'bg-slate-800 text-slate-200 border-slate-600' : 'bg-slate-950 text-slate-400 border-slate-800'
+            className={`px-2 py-0.5 rounded-[4px] border flex items-center gap-1 transition-colors ${
+              sortBy === 'value'
+                ? 'bg-white/[0.10] text-white border-white/[0.18]'
+                : 'bg-[#06080c] text-slate-400 border-white/[0.06] hover:text-slate-200'
             }`}
           >
             <ArrowUpDown className="w-2.5 h-2.5" />
-            Value
+            <span>Value {sortBy === 'value' ? (sortAsc ? '▲' : '▼') : ''}</span>
           </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="max-h-56 overflow-y-auto border border-slate-800 rounded bg-slate-950">
+      {/* Inspector Table */}
+      <div className="max-h-56 overflow-y-auto border border-white/[0.08] rounded-[5px] bg-[#06080c]">
         <table className="w-full text-left font-mono text-xs">
-          <thead className="bg-slate-900 text-slate-400 sticky top-0 border-b border-slate-800 text-[11px]">
+          <thead className="bg-[#0a0e16] text-slate-400 sticky top-0 border-b border-white/[0.08] text-[11px]">
             <tr>
               <th className="py-1.5 px-3 font-medium">Variable</th>
               <th className="py-1.5 px-3 font-medium text-right">Value</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60">
+          <tbody className="divide-y divide-white/[0.04]">
             {filteredEntries.length > 0 ? (
               filteredEntries.map(([varName, val]) => (
-                <tr key={varName} className="hover:bg-slate-900/50 transition-colors">
+                <tr key={varName} className="hover:bg-white/[0.02] transition-colors">
                   <td className="py-1 px-3 text-slate-300 font-medium">{varName}</td>
-                  <td className="py-1 px-3 text-right text-slate-100 font-mono">
+                  <td className="py-1 px-3 text-right text-white font-mono tabular-nums">
                     {val.toFixed(6)}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={2} className="py-3 text-center text-slate-500 font-mono text-[11px]">
+                <td colSpan={2} className="py-4 text-center text-slate-500 font-mono text-[11px]">
                   No matching variables
                 </td>
               </tr>

@@ -1,13 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sovereign Workbench</title>
+    <meta name="theme-color" content="#07090d" />
+    <title>Sovereign — Optimization Workbench</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+            },
+            colors: {
+              sov: {
+                bg: '#07090d',
+                surface: '#0b0f15',
+                card: '#0e141c',
+                panel: '#121924',
+                border: 'rgba(255, 255, 255, 0.08)',
+                borderSubtle: 'rgba(255, 255, 255, 0.05)',
+                borderHighlight: 'rgba(255, 255, 255, 0.14)',
+                accent: '#2563eb',
+                accentMuted: '#1d4ed8',
+                accentCyan: '#06b6d4',
+                text: '#f1f5f9',
+                textMuted: '#94a3b8',
+                textFaint: '#64748b'
+              }
+            }
+          }
+        }
+      }
+    </script>
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased font-sans">
+  <body class="bg-[#07090d] text-slate-100 antialiased font-sans select-none overflow-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

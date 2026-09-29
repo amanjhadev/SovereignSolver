@@ -109,286 +109,51 @@ SimplexResult DualSimplexSolver::solve(const LPModel& orig_model) {
 }
 
 SimplexResult DualSimplexSolver::solve(const LPModel& orig_model, const Basis& warm_start_basis) {
+    // 1. Validate original model
+    auto val_res = LPValidator::validate(orig_model);
+    if (!val_res.is_valid) {
+        SimplexResult res;
+        if (val_res.is_infeasible) {
+            res.status = SimplexStatus::Infeasible;
+            res.message = "LPValidator proved infeasibility: " + (val_res.errors.empty() ? "Infeasible bounds" : val_res.errors[0]);
+            return res;
+        }
+        res.status = SimplexStatus::NumericalFailure;
+        res.message = "LPValidator failed: " + (val_res.errors.empty() ? "Invalid model" : val_res.errors[0]);
+        return res;
+    }
+
     LPModel std_model = orig_model.convert_to_standard_form();
     if (warm_start_basis.num_rows() == std_model.num_constraints() &&
         warm_start_basis.num_cols() == std_model.num_variables()) {
         try {
-            LPModel phase2_model = std_model;
-            SimplexState state;
-            Int64 total_iters = 0;
+            SimplexState state(std_model, warm_start_basis);
+            if (is_ok(state.factorize_basis(config_)) &&
+                is_ok(state.solve_primal_solution()) &&
+                is_ok(state.solve_dual_solution())) {
 
-            SimplexStatus status = solve_warm_phase_1(std_model, warm_start_basis, phase2_model, state, total_iters);
-            if (status == SimplexStatus::Optimal) {
-                // Warm Phase I succeeded! Transition to Primal Simplex Phase II!
-                PrimalSimplexSolver p2_solver(config_);
-                SimplexStatus p2_status = p2_solver.solve(state, total_iters);
-                return recover_solution(orig_model, std_model, state, p2_status, total_iters, "Warm Phase I + Primal Phase II optimal");
-            } else if (status == SimplexStatus::Infeasible) {
-                return recover_solution(orig_model, std_model, state, SimplexStatus::Infeasible, total_iters, "Warm Phase I proved infeasibility");
+                Float64 dummy_viol = 0.0;
+                Index dummy_idx = -1;
+                bool d_feas = state.check_dual_feasibility(tol_dual_, dummy_viol, dummy_idx);
+                if (d_feas) {
+                    Float64 p_viol = 0.0;
+                    Index p_idx = -1;
+                    bool p_feas = state.check_primal_feasibility(tol_primal_, p_viol, p_idx);
+                    if (p_feas) {
+                        return recover_solution(orig_model, std_model, state, SimplexStatus::Optimal, 0, "Warm start already optimal");
+                    }
+                    Int64 total_iters = 0;
+                    SimplexStatus p2_status = solve_phase_2(state, total_iters);
+                    if (p2_status == SimplexStatus::Optimal || p2_status == SimplexStatus::Infeasible) {
+                        return recover_solution(orig_model, std_model, state, p2_status, total_iters, "Warm start Dual Simplex Phase II");
+                    }
+                }
             }
         } catch (...) {
             // Fallback to clean solve below
         }
     }
     return solve(orig_model);
-}
-
-SimplexStatus DualSimplexSolver::solve_warm_phase_1(
-    const LPModel& std_model,
-    const Basis& warm_start_basis,
-    LPModel& phase2_model,
-    SimplexState& state,
-    Int64& total_iters
-) {
-    Index m = std_model.num_constraints();
-    Index n = std_model.num_variables();
-
-    if (warm_start_basis.num_rows() != m || warm_start_basis.num_cols() != n) {
-        return SimplexStatus::NotSolved; // Fallback
-    }
-
-    std::vector<Index> violated_slots;
-    auto basic_vars = warm_start_basis.basic_vars();
-
-    // 1. Identify initial invalid or out-of-range basis slots
-    std::vector<bool> slot_invalid(m, false);
-    for (Index i = 0; i < m; ++i) {
-        Index col = basic_vars[i];
-        if (col < 0 || col >= n) {
-            slot_invalid[i] = true;
-            violated_slots.push_back(i);
-        }
-    }
-
-    // Build candidate model adding temporary unit artificials for invalid slots to evaluate primal values
-    LPModel cand_model("cand_aux", ObjectiveSense::Minimize);
-    for (Index j = 0; j < n; ++j) {
-        const auto& var = std_model.get_variable(j);
-        cand_model.add_variable(var.name, var.lower_bound, var.upper_bound, 0.0, var.type);
-    }
-    std::unordered_map<Index, Index> cand_art_map;
-    for (Index i = 0; i < m; ++i) {
-        if (slot_invalid[i]) {
-            Index c_art = cand_model.add_variable("art_cand_" + std::to_string(i), 0.0, INFINITY_VAL, 0.0, VariableType::Continuous);
-            cand_art_map[i] = c_art;
-        }
-    }
-    const auto& csc_std = std_model.get_csc_matrix();
-    Index num_cand_vars = cand_model.num_variables();
-    Basis cand_basis(m, num_cand_vars);
-
-    for (Index i = 0; i < m; ++i) {
-        const auto& constr = std_model.get_constraint(i);
-        std::vector<Index> r_cols;
-        std::vector<Float64> r_vals;
-        for (Index j = 0; j < n; ++j) {
-            auto r_idx = csc_std.get_col_row_indices(j);
-            auto c_v = csc_std.get_col_values(j);
-            for (std::size_t k = 0; k < r_idx.size(); ++k) {
-                if (r_idx[k] == i) { r_cols.push_back(j); r_vals.push_back(c_v[k]); }
-            }
-        }
-        if (slot_invalid[i]) {
-            Index c_art = cand_art_map[i];
-            r_cols.push_back(c_art);
-            r_vals.push_back(1.0);
-            cand_basis.set_basic(c_art, i);
-        } else {
-            cand_basis.set_basic(basic_vars[i], i);
-        }
-        cand_model.add_constraint(constr.name, ConstraintSense::Equal, constr.rhs, r_cols, r_vals);
-    }
-    for (Index j = 0; j < num_cand_vars; ++j) {
-        if (cand_basis.get_status(j) != BasisStatus::Basic) {
-            if (j < n) {
-                BasisStatus st = warm_start_basis.get_status(j);
-                if (st == BasisStatus::Basic) st = BasisStatus::AtLower;
-                cand_basis.set_nonbasic(j, st);
-            } else {
-                cand_basis.set_nonbasic(j, BasisStatus::AtLower);
-            }
-        }
-    }
-    cand_basis.rebuild_position_maps();
-
-    SimplexState cand_state(cand_model, cand_basis);
-    if (is_ok(cand_state.factorize_basis(config_)) && is_ok(cand_state.solve_primal_solution())) {
-        auto sol = cand_state.x_all();
-        for (Index i = 0; i < m; ++i) {
-            if (!slot_invalid[i]) {
-                Index col = basic_vars[i];
-                Float64 val = sol[col];
-                const auto& var = std_model.get_variable(col);
-                if (val < var.lower_bound - tol_primal_ || val > var.upper_bound + tol_primal_) {
-                    if (std::find(violated_slots.begin(), violated_slots.end(), i) == violated_slots.end()) {
-                        violated_slots.push_back(i);
-                    }
-                }
-            }
-        }
-    } else {
-        return SimplexStatus::NotSolved; // Fallback
-    }
-
-    if (violated_slots.empty()) {
-        state = SimplexState(std_model, warm_start_basis);
-        state.factorize_basis(config_);
-        state.solve_primal_solution();
-        return SimplexStatus::Optimal;
-    }
-
-    Index k_art = static_cast<Index>(violated_slots.size());
-
-    LPModel phase1_model("phase1_warm_aux", ObjectiveSense::Minimize);
-    for (Index j = 0; j < n; ++j) {
-        const auto& var = std_model.get_variable(j);
-        phase1_model.add_variable(var.name, var.lower_bound, var.upper_bound, 0.0, var.type);
-    }
-
-    std::unordered_map<Index, Index> slot_to_art_col;
-    for (Index idx = 0; idx < k_art; ++idx) {
-        Index slot_i = violated_slots[idx];
-        Index art_col = phase1_model.add_variable("art_warm_" + std::to_string(slot_i), 0.0, INFINITY_VAL, 1.0, VariableType::Continuous);
-        slot_to_art_col[slot_i] = art_col;
-    }
-
-    const auto& csc = std_model.get_csc_matrix();
-    Basis phase1_basis(m, n + k_art);
-
-    for (Index i = 0; i < m; ++i) {
-        const auto& constr = std_model.get_constraint(i);
-        std::vector<Index> row_cols;
-        std::vector<Float64> row_vals;
-        for (Index j = 0; j < n; ++j) {
-            auto r_idx = csc.get_col_row_indices(j);
-            auto c_v = csc.get_col_values(j);
-            for (std::size_t k = 0; k < r_idx.size(); ++k) {
-                if (r_idx[k] == i) {
-                    row_cols.push_back(j);
-                    row_vals.push_back(c_v[k]);
-                }
-            }
-        }
-
-        auto art_it = slot_to_art_col.find(i);
-        if (art_it != slot_to_art_col.end()) {
-            Index art_idx = art_it->second;
-            row_cols.push_back(art_idx);
-            row_vals.push_back(1.0);
-            phase1_basis.set_basic(art_idx, i);
-        } else {
-            Index bvar = basic_vars[i];
-            if (bvar >= 0 && bvar < n) {
-                phase1_basis.set_basic(bvar, i);
-            } else {
-                return SimplexStatus::NotSolved; // Fallback
-            }
-        }
-
-        phase1_model.add_constraint(constr.name, ConstraintSense::Equal, constr.rhs, row_cols, row_vals);
-    }
-
-    for (Index j = 0; j < n; ++j) {
-        if (phase1_basis.get_status(j) != BasisStatus::Basic) {
-            BasisStatus st = warm_start_basis.get_status(j);
-            if (st == BasisStatus::Basic) st = BasisStatus::AtLower;
-            phase1_basis.set_nonbasic(j, st);
-        }
-    }
-
-    SimplexState p1_state(phase1_model, phase1_basis);
-    if (!is_ok(p1_state.factorize_basis(config_))) {
-        return SimplexStatus::NotSolved; // Fallback
-    }
-
-    p1_state.solve_primal_solution();
-    p1_state.solve_dual_solution();
-
-    PrimalSimplexSolver p1_solver(config_);
-    SimplexStatus p1_status = p1_solver.solve(p1_state, total_iters);
-    if (p1_status != SimplexStatus::Optimal && p1_status != SimplexStatus::NotSolved) {
-        return p1_status;
-    }
-
-    Float64 p1_obj = p1_state.compute_objective_value();
-    if (p1_obj > tol_primal_) {
-        return SimplexStatus::Infeasible;
-    }
-
-    for (Index i = 0; i < m; ++i) {
-        Index col = p1_state.basis().get_basic_var(i);
-        if (col >= n) {
-            Float64 max_pivot = 0.0;
-            Index best_cand = -1;
-            std::vector<Float64> best_d(m, 0.0);
-
-            for (Index j = 0; j < n; ++j) {
-                if (p1_state.basis().get_status(j) == BasisStatus::Basic) continue;
-
-                std::vector<Float64> d(m, 0.0);
-                Status ftran_st = p1_state.compute_ftran_direction(j, d);
-                if (is_ok(ftran_st)) {
-                    Float64 pivot_mag = std::abs(d[i]);
-                    if (pivot_mag > tol_pivot_ && pivot_mag > max_pivot) {
-                        max_pivot = pivot_mag;
-                        best_cand = j;
-                        best_d = d;
-                    }
-                }
-            }
-
-            if (best_cand != -1) {
-                p1_state.basis().pivot(best_cand, i, BasisStatus::AtLower);
-                Status up_st = p1_state.basis_matrix().update_pivot(i, best_d, tol_pivot_);
-                if (!is_ok(up_st) || p1_state.basis_matrix().should_refactorize()) {
-                    p1_state.factorize_basis(config_);
-                }
-            }
-        }
-    }
-
-    bool has_art_basic = false;
-    for (Index i = 0; i < m; ++i) {
-        if (p1_state.basis().get_basic_var(i) >= n) {
-            has_art_basic = true;
-            break;
-        }
-    }
-
-    if (!has_art_basic) {
-        Basis final_basis(m, n);
-        for (Index i = 0; i < m; ++i) {
-            final_basis.set_basic(p1_state.basis().get_basic_var(i), i);
-        }
-        for (Index j = 0; j < n; ++j) {
-            if (final_basis.get_status(j) != BasisStatus::Basic) {
-                BasisStatus st = p1_state.basis().get_status(j);
-                if (st == BasisStatus::Basic) st = BasisStatus::AtLower;
-                final_basis.set_nonbasic(j, st);
-            }
-        }
-        final_basis.rebuild_position_maps();
-
-        state = SimplexState(std_model, final_basis);
-        if (!is_ok(state.factorize_basis(config_))) {
-            return SimplexStatus::NotSolved; // Fallback
-        }
-    } else {
-        // Construct Phase II model extending phase1_model with original std_model objective coefficients
-        phase2_model = phase1_model;
-        for (Index j = 0; j < n; ++j) {
-            phase2_model.get_variable(j).obj_coeff = std_model.get_variable(j).obj_coeff;
-        }
-        for (Index j = n; j < n + k_art; ++j) {
-            phase2_model.get_variable(j).obj_coeff = 0.0;
-        }
-        state = SimplexState(phase2_model, p1_state.basis());
-        if (!is_ok(state.factorize_basis(config_))) {
-            return SimplexStatus::NotSolved; // Fallback
-        }
-    }
-
-    return SimplexStatus::Optimal;
 }
 
 SimplexStatus DualSimplexSolver::solve_phase_1(const LPModel& std_model, LPModel& phase2_model, SimplexState& state, Int64& total_iters) {

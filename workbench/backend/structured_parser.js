@@ -58,18 +58,24 @@ function parseStructuredToMps(text, modelName = "structured_model") {
         const parts = term.split('*');
         coeff = parseFloat(parts[0].trim());
         varName = parts[1].trim();
-      } else if (!isNaN(parseFloat(term)) && !/[a-zA-Z]/.test(term)) {
-        // Just a constant term
-        continue;
-      } else if (term.startsWith('-')) {
-        const rest = term.substring(1).trim();
-        if (rest === '' || isNaN(parseFloat(rest))) {
-          coeff = -1.0;
-          varName = rest || varName;
-        } else if (rest.includes('*')) {
-          const parts = rest.split('*');
-          coeff = -parseFloat(parts[0].trim());
-          varName = parts[1].trim();
+      } else {
+        const spaceMatch = term.match(/^([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+([a-zA-Z_][a-zA-Z0-9_]*)$/);
+        if (spaceMatch) {
+          coeff = parseFloat(spaceMatch[1]);
+          varName = spaceMatch[2];
+        } else if (!isNaN(parseFloat(term)) && !/[a-zA-Z]/.test(term)) {
+          // Just a constant term
+          continue;
+        } else if (term.startsWith('-')) {
+          const rest = term.substring(1).trim();
+          if (rest === '' || isNaN(parseFloat(rest))) {
+            coeff = -1.0;
+            varName = rest || varName;
+          } else if (rest.includes('*')) {
+            const parts = rest.split('*');
+            coeff = -parseFloat(parts[0].trim());
+            varName = parts[1].trim();
+          }
         }
       }
 
@@ -97,13 +103,35 @@ function parseStructuredToMps(text, modelName = "structured_model") {
     if (upper === 'VARIABLES' || upper === 'VARS') {
       currentSection = 'VARIABLES';
       continue;
-    } else if (upper === 'MINIMIZE' || upper === 'MIN') {
+    } else if (upper === 'MINIMIZE' || upper === 'MIN' || upper.startsWith('MINIMIZE ') || upper.startsWith('MIN ')) {
       currentSection = 'OBJECTIVE';
       sense = 'MINIMIZE';
+      const firstSpace = line.indexOf(' ');
+      if (firstSpace !== -1) {
+        const rest = line.substring(firstSpace + 1).trim();
+        if (rest) {
+          const coeffs = parseExpression(rest);
+          for (let [vName, cVal] of coeffs.entries()) {
+            const prev = objCoeffs.get(vName) || 0.0;
+            objCoeffs.set(vName, prev + cVal);
+          }
+        }
+      }
       continue;
-    } else if (upper === 'MAXIMIZE' || upper === 'MAX') {
+    } else if (upper === 'MAXIMIZE' || upper === 'MAX' || upper.startsWith('MAXIMIZE ') || upper.startsWith('MAX ')) {
       currentSection = 'OBJECTIVE';
       sense = 'MAXIMIZE';
+      const firstSpace = line.indexOf(' ');
+      if (firstSpace !== -1) {
+        const rest = line.substring(firstSpace + 1).trim();
+        if (rest) {
+          const coeffs = parseExpression(rest);
+          for (let [vName, cVal] of coeffs.entries()) {
+            const prev = objCoeffs.get(vName) || 0.0;
+            objCoeffs.set(vName, prev + cVal);
+          }
+        }
+      }
       continue;
     } else if (upper === 'SUBJECT TO' || upper === 'CONSTRAINTS' || upper === 'ST') {
       currentSection = 'CONSTRAINTS';
@@ -183,6 +211,8 @@ function parseStructuredToMps(text, modelName = "structured_model") {
 
   const mps = [];
   mps.push(`NAME          ${modelName}`);
+  mps.push("OBJSENSE");
+  mps.push(`  ${sense === 'MAXIMIZE' ? 'MAX' : 'MIN'}`);
   mps.push("ROWS");
   mps.push(" N  obj");
   for (let c of constraints) {

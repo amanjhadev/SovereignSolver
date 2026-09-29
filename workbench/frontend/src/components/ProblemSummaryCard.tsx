@@ -22,43 +22,49 @@ export const ProblemSummaryCard: React.FC<ProblemSummaryCardProps> = ({
   const sense = telemetry?.sense ?? validationInfo?.sense;
 
   return (
-    <div className="p-3.5 border-b border-slate-800 bg-slate-900/50 space-y-2 text-xs">
-      <div className="flex items-center justify-between text-slate-300">
-        <span className="font-semibold text-slate-200">Model Dimensions</span>
-        <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 uppercase">
+    <div className="p-3.5 border-b border-white/[0.08] bg-[#090d14]/70 space-y-2.5 text-xs text-slate-200">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-white tracking-tight">Model Dimensions</span>
+        <span className="font-mono text-[10px] px-2 py-0.5 rounded-[4px] bg-white/[0.06] text-slate-300 uppercase font-medium border border-white/[0.08]">
           {type}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
-        <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800/80">
-          <div className="text-[10px] text-slate-500 font-sans">Model</div>
-          <div className="font-medium text-slate-200 truncate mt-0.5">{name}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs">
+        <div className="bg-[#06080c] px-3 py-2 rounded-[5px] border border-white/[0.06]">
+          <div className="text-[10px] text-slate-400 font-sans">Instance</div>
+          <div className="font-medium text-slate-100 truncate mt-0.5" title={name}>
+            {name}
+          </div>
         </div>
 
-        <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800/80">
-          <div className="text-[10px] text-slate-500 font-sans">Variables</div>
-          <div className="font-medium text-slate-200 mt-0.5">
-            {vars ?? '—'}{' '}
+        <div className="bg-[#06080c] px-3 py-2 rounded-[5px] border border-white/[0.06]">
+          <div className="text-[10px] text-slate-400 font-sans">Variables</div>
+          <div className="font-medium text-slate-100 mt-0.5 tabular-nums">
+            {vars !== undefined ? vars : '—'}{' '}
             {vars !== undefined && (
-              <span className="text-slate-500 font-normal">
+              <span className="text-slate-400 text-[11px] font-normal">
                 ({binaries ?? 0}b / {continuous ?? 0}c)
               </span>
             )}
           </div>
         </div>
 
-        <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800/80">
-          <div className="text-[10px] text-slate-500 font-sans">Constraints</div>
-          <div className="font-medium text-slate-200 mt-0.5">
-            {constraints ?? '—'}{' '}
-            {nnz !== undefined && <span className="text-slate-500 font-normal">({nnz} nz)</span>}
+        <div className="bg-[#06080c] px-3 py-2 rounded-[5px] border border-white/[0.06]">
+          <div className="text-[10px] text-slate-400 font-sans">Constraints</div>
+          <div className="font-medium text-slate-100 mt-0.5 tabular-nums">
+            {constraints !== undefined ? constraints : '—'}{' '}
+            {nnz !== undefined && (
+              <span className="text-slate-400 text-[11px] font-normal">({nnz} nz)</span>
+            )}
           </div>
         </div>
 
-        <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800/80">
-          <div className="text-[10px] text-slate-500 font-sans">Sense</div>
-          <div className="font-medium text-slate-200 mt-0.5">{sense ?? 'MINIMIZE'}</div>
+        <div className="bg-[#06080c] px-3 py-2 rounded-[5px] border border-white/[0.06]">
+          <div className="text-[10px] text-slate-400 font-sans">Sense</div>
+          <div className="font-medium text-slate-100 mt-0.5 uppercase tracking-wide">
+            {sense || '—'}
+          </div>
         </div>
       </div>
     </div>

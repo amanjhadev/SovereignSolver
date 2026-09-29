@@ -9,6 +9,8 @@ bool LPWriter::write_mps(const LPModel& model, const std::string& filepath) {
     if (!out.is_open()) return false;
 
     out << "NAME          " << model.name() << "\n";
+    out << "OBJSENSE\n";
+    out << "  " << (model.objective_sense() == ObjectiveSense::Maximize ? "MAX" : "MIN") << "\n";
     out << "ROWS\n";
     out << " N  OBJ\n";
 

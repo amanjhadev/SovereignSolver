@@ -184,3 +184,4 @@ add_scratch_target(test_c30_parser C:/Users/amanj/.gemini/antigravity/brain/e9e9
 
 enable_testing()
 add_test(NAME SovereignUnitTests COMMAND sovereign_tests)
+set_tests_properties(SovereignUnitTests PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
