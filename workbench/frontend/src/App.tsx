@@ -626,12 +626,12 @@ function WorkbenchMain() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#07090d] text-slate-100 font-sans">
+    <div className="flex flex-col min-h-screen lg:h-screen w-full lg:w-screen overflow-x-hidden overflow-y-auto lg:overflow-hidden bg-[#07090d] text-slate-100 font-sans">
       {/* Top Application Bar */}
       <TopBar health={health} />
 
       {/* Main Content Three-Zone Workspace */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 min-w-0 flex flex-col lg:flex-row overflow-visible lg:overflow-hidden">
         {/* Left Sidebar: Saved Models Project Explorer */}
         <Sidebar
           activePresetId={activePresetId}
@@ -643,9 +643,9 @@ function WorkbenchMain() {
         />
 
         {/* Central Model Editor & Right Results Analysis Console */}
-        <main className="flex-1 grid grid-cols-12 h-full overflow-hidden">
-          {/* Model Formulation / Editor Column (7 Cols on desktop) */}
-          <div className="col-span-12 lg:col-span-7 h-full flex flex-col min-w-0">
+        <main className="flex-1 min-h-0 min-w-0 flex flex-col lg:flex-row h-auto lg:h-full overflow-visible lg:overflow-hidden">
+          {/* Model Formulation / Editor Column (7/12 width on desktop) */}
+          <div className="w-full lg:w-[58.333%] h-[550px] lg:h-full min-h-0 min-w-0 flex flex-col overflow-hidden">
             <EditorPanel
               name={problemName}
               onChangeName={setProblemName}
@@ -669,14 +669,14 @@ function WorkbenchMain() {
             />
           </div>
 
-          {/* Results, Diagnostics & Telemetry Column (5 Cols on desktop) */}
-          <div className="col-span-12 lg:col-span-5 h-full overflow-y-auto bg-[#07090d] border-l border-white/[0.08] flex flex-col min-w-0">
-            {/* Header: Results Title & Log Drawer Trigger */}
+          {/* Results, Diagnostics & Telemetry Column (5/12 width on desktop) */}
+          <div className="w-full lg:w-[41.667%] min-h-[450px] lg:h-full min-h-0 min-w-0 bg-[#07090d] border-t lg:border-t-0 lg:border-l border-white/[0.08] flex flex-col overflow-hidden">
+            {/* Header: Results Title & Log Drawer Trigger (Always Pinned at Top) */}
             <div className="p-3 bg-[#0a0e16] border-b border-white/[0.08] flex items-center justify-between shrink-0">
               <span className="text-xs font-semibold text-slate-300 tracking-tight">Optimization Results</span>
               <button
                 onClick={() => setIsLogDrawerOpen(true)}
-                className="px-2.5 py-1 text-xs bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 font-mono rounded-[4px] flex items-center gap-1.5 border border-white/[0.08] transition-colors"
+                className="px-2.5 py-1 text-xs bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 font-mono rounded-[4px] flex items-center gap-1.5 border border-white/[0.08] transition-colors cursor-pointer"
                 title="Open real-time solver log console"
               >
                 <Terminal className="w-3.5 h-3.5 text-slate-400" />
@@ -686,7 +686,7 @@ function WorkbenchMain() {
 
             {/* Results Body: Single Empty State vs Progressively Revealed Components */}
             {!solveResult && !validationInfo && !isSolving ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 font-sans space-y-3">
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center p-8 text-center text-slate-500 font-sans space-y-3">
                 <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
                   <Crosshair className="w-4 h-4 text-slate-600" />
                 </div>
@@ -697,7 +697,7 @@ function WorkbenchMain() {
                 </p>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto divide-y divide-white/[0.06]">
+              <div className="flex-1 min-h-0 min-w-0 overflow-y-auto divide-y divide-white/[0.06]">
                 {/* 1. Model Summary Card */}
                 <ProblemSummaryCard
                   name={problemName}

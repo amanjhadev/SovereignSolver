@@ -59,6 +59,13 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   };
 
+  // Synchronize gutter on model content changes (e.g. model switching)
+  useEffect(() => {
+    if (gutterRef.current && textareaRef.current) {
+      gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  }, [content]);
+
   const lines = content ? content.split('\n') : [''];
   const lineCount = lines.length;
 
@@ -73,7 +80,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[#07090d] border-r border-white/[0.08] text-slate-200">
+    <div className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden bg-[#07090d] border-r border-white/[0.08] text-slate-200">
       {/* Primary Toolbar: Model Name & Format & Save */}
       <div className="shrink-0 p-3 border-b border-white/[0.08] bg-[#0a0e16] space-y-2.5">
         <div className="flex items-center justify-between gap-3">
@@ -153,7 +160,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
         {/* Secondary Bar: Syntax Section Helpers & Timeout Config */}
         <div className="flex items-center justify-between gap-3 text-xs pt-0.5">
           {inputMode === 'structured' ? (
-            <div className="flex items-center gap-1.5 font-mono text-[10px] text-slate-400 overflow-x-auto py-0.5">
+            <div className="flex items-center gap-1.5 font-mono text-[10px] text-slate-400 overflow-x-auto py-0.5 min-w-0">
               <span className="text-slate-400 font-sans font-medium shrink-0">Sections:</span>
               {['VARIABLES', 'MINIMIZE', 'MAXIMIZE', 'SUBJECT TO', 'BOUNDS'].map((sec) => (
                 <button
@@ -166,7 +173,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
               ))}
             </div>
           ) : (
-            <div className="text-[11px] font-mono text-slate-500">
+            <div className="text-[11px] font-mono text-slate-500 truncate">
               Standard MPS formulation format
             </div>
           )}
@@ -191,7 +198,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
       {inputMode === 'mps' && (
         <div className="shrink-0 p-3 bg-[#0a0e16]/80 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Upload className="w-4 h-4 text-emerald-400" />
+            <Upload className="w-4 h-4 text-emerald-400 shrink-0" />
             <div>
               <div className="text-xs font-medium text-slate-200">Load Benchmark File</div>
               <div className="text-[10px] text-slate-500 font-mono">Upload standard .mps or .mps.gz files</div>
@@ -199,7 +206,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           </div>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1 text-xs bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/[0.10] rounded-[5px] transition-colors"
+            className="px-3 py-1 text-xs bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/[0.10] rounded-[5px] transition-colors shrink-0"
           >
             Browse File...
           </button>
@@ -214,19 +221,31 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
       )}
 
       {/* Editor Main Canvas with Synchronized Line Numbers Gutter */}
-      <div className="flex-1 min-h-0 relative flex overflow-hidden bg-[#06080c]">
+      <div className="flex-1 min-h-0 min-w-0 relative flex overflow-hidden bg-[#06080c]">
         {/* Line Numbers Gutter */}
         <div
           ref={gutterRef}
+          onWheel={(e) => {
+            if (textareaRef.current) {
+              const delta = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaMode === 2 ? e.deltaY * 500 : e.deltaY;
+              textareaRef.current.scrollTop += delta;
+              if (gutterRef.current) {
+                gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+              }
+            }
+          }}
+          onClick={() => textareaRef.current?.focus()}
           aria-hidden="true"
-          className="w-12 shrink-0 py-3.5 pr-2 pl-1 select-none overflow-hidden text-right font-mono text-xs text-slate-600 bg-[#07090e] border-r border-white/[0.05]"
+          className="w-12 h-full shrink-0 py-3.5 pr-2 pl-1 select-none overflow-hidden text-right font-mono text-xs text-slate-600 bg-[#07090e] border-r border-white/[0.05] cursor-text"
           style={{ lineHeight: '1.5rem' }}
         >
           {Array.from({ length: lineCount }, (_, i) => (
-            <div key={i + 1} className="h-6">
+            <div key={i + 1} className="h-6 leading-6 text-[11px]">
               {i + 1}
             </div>
           ))}
+          {/* Scroll padding at bottom matching textarea */}
+          <div className="h-20 shrink-0" aria-hidden="true" />
         </div>
 
         {/* Textarea Editor */}
@@ -241,7 +260,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
               ? `VARIABLES\nx1 binary\nx2 binary\nx3 continuous\n\nMINIMIZE\n5*x1 + 7*x2 + 3*x3\n\nSUBJECT TO\nc1: x1 + x2 >= 1\nc2: x3 <= 10`
               : `NAME          model_name\nROWS\n N  obj\n E  c1\nCOLUMNS\n...`
           }
-          className="flex-1 min-h-0 w-full bg-transparent p-3.5 font-mono text-xs text-slate-100 leading-6 focus:outline-none resize-none overflow-auto whitespace-pre placeholder:text-slate-700"
+          className="flex-1 min-h-0 min-w-0 w-full h-full bg-transparent p-3.5 pb-20 font-mono text-xs text-slate-100 leading-6 focus:outline-none resize-none overflow-y-auto overflow-x-auto whitespace-pre placeholder:text-slate-700 editor-scrollbar"
           spellCheck={false}
           style={{ lineHeight: '1.5rem' }}
         />
@@ -254,7 +273,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           <button
             onClick={onValidate}
             disabled={isValidating || isSolving}
-            className="px-3.5 py-1.5 bg-white/[0.05] hover:bg-white/[0.10] text-slate-200 border border-white/[0.10] rounded-[5px] text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm"
+            className="px-3.5 py-1.5 bg-white/[0.05] hover:bg-white/[0.10] text-slate-200 border border-white/[0.10] rounded-[5px] text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm cursor-pointer"
           >
             <Check className="w-3.5 h-3.5 text-slate-300" />
             <span>{isValidating ? 'Validating...' : 'Validate'}</span>
@@ -274,7 +293,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
               </div>
               <button
                 onClick={onStopSolve}
-                className="px-3.5 py-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-800 rounded-[5px] text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm"
+                className="px-3.5 py-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-800 rounded-[5px] text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
               >
                 <Square className="w-3 h-3" />
                 <span>Stop Solve</span>

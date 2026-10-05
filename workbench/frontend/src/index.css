@@ -105,23 +105,61 @@ body {
   border-color: rgba(255, 255, 255, 0.16);
 }
 
-/* Custom Minimal Engineering Scrollbar */
+/* Custom Minimal Engineering Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) rgba(255, 255, 255, 0.03);
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Dedicated High-Contrast Editor Scrollbar */
+.editor-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(8, 11, 16, 0.85);
+}
+
+.editor-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.editor-scrollbar::-webkit-scrollbar-track {
+  background: rgba(8, 11, 16, 0.85);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.editor-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.editor-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 /* Focus Visible Styling */

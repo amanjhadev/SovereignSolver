@@ -48,9 +48,9 @@ export const SolverLogDrawer: React.FC<SolverLogDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-[4px] flex justify-end">
-      <div className="w-full max-w-xl bg-[#090d14] border-l border-white/[0.12] h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-150">
+      <div className="w-full max-w-xl bg-[#090d14] border-l border-white/[0.12] h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-150 overflow-hidden">
         {/* Drawer Header */}
-        <div className="p-3.5 border-b border-white/[0.08] flex items-center justify-between bg-[#06080c]">
+        <div className="p-3.5 border-b border-white/[0.08] flex items-center justify-between bg-[#06080c] shrink-0">
           <div className="flex items-center gap-2.5">
             <Terminal className="w-4 h-4 text-slate-400" />
             <div>
@@ -62,7 +62,7 @@ export const SolverLogDrawer: React.FC<SolverLogDrawerProps> = ({
             {logs && logs.length > 0 && (
               <button
                 onClick={handleCopyLogs}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-[4px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/[0.08] text-[11px] font-mono transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-[4px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/[0.08] text-[11px] font-mono transition-colors cursor-pointer"
                 title="Copy all logs to clipboard"
               >
                 {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -71,7 +71,7 @@ export const SolverLogDrawer: React.FC<SolverLogDrawerProps> = ({
             )}
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-[4px] hover:bg-white/[0.08] transition-colors"
+              className="p-1.5 text-slate-400 hover:text-white rounded-[4px] hover:bg-white/[0.08] transition-colors cursor-pointer"
               aria-label="Close log drawer"
             >
               <X className="w-4 h-4" />
@@ -81,7 +81,7 @@ export const SolverLogDrawer: React.FC<SolverLogDrawerProps> = ({
 
         {/* Filter bar */}
         {logs && logs.length > 0 && (
-          <div className="p-2.5 border-b border-white/[0.06] bg-[#07090e] flex items-center gap-2">
+          <div className="p-2.5 border-b border-white/[0.06] bg-[#07090e] flex items-center gap-2 shrink-0">
             <div className="relative flex-1">
               <Search className="w-3 h-3 absolute left-2.5 top-2 text-slate-500" />
               <input
@@ -98,8 +98,8 @@ export const SolverLogDrawer: React.FC<SolverLogDrawerProps> = ({
           </div>
         )}
 
-        {/* Drawer Stream Body */}
-        <div className="flex-1 p-3.5 overflow-y-auto font-mono text-xs space-y-1.5 bg-[#06080c] text-slate-200">
+        {/* Drawer Stream Body with strict min-h-0 and internal scrolling */}
+        <div className="flex-1 min-h-0 min-w-0 p-3.5 overflow-y-auto font-mono text-xs space-y-1.5 bg-[#06080c] text-slate-200">
           {!logs || logs.length === 0 ? (
             <div className="p-8 text-center text-slate-500 flex flex-col items-center justify-center h-full space-y-2">
               <Terminal className="w-8 h-8 text-slate-700 mb-1" />
@@ -133,10 +133,10 @@ export const SolverLogDrawer: React.FC<SolverLogDrawerProps> = ({
         </div>
 
         {/* Drawer Footer */}
-        <div className="p-2.5 border-t border-white/[0.08] bg-[#07090e] flex justify-end text-xs">
+        <div className="p-2.5 border-t border-white/[0.08] bg-[#07090e] flex justify-end text-xs shrink-0">
           <button
             onClick={onClose}
-            className="px-3.5 py-1.5 bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 rounded-[4px] text-xs font-medium transition-colors border border-white/[0.08]"
+            className="px-3.5 py-1.5 bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 rounded-[4px] text-xs font-medium transition-colors border border-white/[0.08] cursor-pointer"
           >
             Close
           </button>

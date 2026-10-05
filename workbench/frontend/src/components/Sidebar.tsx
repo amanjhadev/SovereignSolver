@@ -30,12 +30,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      <aside className="w-64 bg-[#090d14] border-r border-white/[0.08] flex flex-col h-full select-none shrink-0 text-slate-300">
+      <aside className="w-full lg:w-64 bg-[#090d14] border-b lg:border-b-0 lg:border-r border-white/[0.08] flex flex-col h-auto max-h-56 lg:max-h-none lg:h-full min-h-0 min-w-0 select-none shrink-0 text-slate-300">
         {/* New Problem Action Header */}
-        <div className="p-3 border-b border-white/[0.08]">
+        <div className="p-3 border-b border-white/[0.08] shrink-0">
           <button
             onClick={onNewProblem}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-[6px] border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] text-slate-100 font-medium text-xs transition-colors shadow-sm"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-[6px] border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] text-slate-100 font-medium text-xs transition-colors shadow-sm cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 text-slate-300" />
             <span>New Problem</span>
@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Project Explorer: Saved Models */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-2 space-y-1">
           <div className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-[0.06em] flex items-center justify-between">
             <span>Saved Models</span>
             <span className="text-[10px] font-mono text-slate-500 font-normal">
@@ -111,7 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         e.stopPropagation();
                         setBenchmarkToDelete(model);
                       }}
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded hover:bg-white/[0.10] text-slate-400 hover:text-rose-400 transition-opacity shrink-0 ml-1"
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded hover:bg-white/[0.10] text-slate-400 hover:text-rose-400 transition-opacity shrink-0 ml-1 cursor-pointer"
                       title="Delete saved model"
                       aria-label="Delete saved model"
                     >
@@ -125,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Explorer Footer Status */}
-        <div className="p-2.5 border-t border-white/[0.08] bg-[#07090d] text-xs text-slate-400 flex items-center justify-between font-mono">
+        <div className="p-2.5 border-t border-white/[0.08] bg-[#07090d] text-xs text-slate-400 flex items-center justify-between font-mono shrink-0">
           <span className="flex items-center gap-2 text-[11px]">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
@@ -157,13 +157,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex justify-end gap-2.5 pt-2 border-t border-white/[0.08]">
               <button
                 onClick={() => setBenchmarkToDelete(null)}
-                className="px-3.5 py-1.5 rounded text-xs text-slate-300 hover:bg-white/[0.08] border border-white/[0.06] transition-colors"
+                className="px-3.5 py-1.5 rounded text-xs text-slate-300 hover:bg-white/[0.08] border border-white/[0.06] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="px-3.5 py-1.5 rounded text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white transition-colors shadow-sm"
+                className="px-3.5 py-1.5 rounded text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white transition-colors shadow-sm cursor-pointer"
               >
                 Delete Model
               </button>

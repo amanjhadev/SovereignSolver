@@ -65,11 +65,11 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution }) => {
         {/* Copy / Export Button */}
         <button
           onClick={handleCopySolution}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-slate-200 border border-white/[0.08] transition-colors font-mono text-[10px]"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-[4px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] transition-colors font-mono text-[10px] cursor-pointer"
           title="Copy visible variables to clipboard"
         >
           {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-          <span>{copied ? 'Copied' : 'Copy'}</span>
+          <span>{copied ? 'Copied' : 'Copy Values'}</span>
         </button>
       </div>
 
@@ -107,7 +107,7 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution }) => {
                 setSortAsc(true);
               }
             }}
-            className={`px-2 py-0.5 rounded-[4px] border flex items-center gap-1 transition-colors ${
+            className={`px-2 py-0.5 rounded-[4px] border flex items-center gap-1 transition-colors cursor-pointer ${
               sortBy === 'name'
                 ? 'bg-white/[0.10] text-white border-white/[0.18]'
                 : 'bg-[#06080c] text-slate-400 border-white/[0.06] hover:text-slate-200'
@@ -126,7 +126,7 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution }) => {
                 setSortAsc(false);
               }
             }}
-            className={`px-2 py-0.5 rounded-[4px] border flex items-center gap-1 transition-colors ${
+            className={`px-2 py-0.5 rounded-[4px] border flex items-center gap-1 transition-colors cursor-pointer ${
               sortBy === 'value'
                 ? 'bg-white/[0.10] text-white border-white/[0.18]'
                 : 'bg-[#06080c] text-slate-400 border-white/[0.06] hover:text-slate-200'
@@ -138,21 +138,23 @@ export const SolutionTable: React.FC<SolutionTableProps> = ({ solution }) => {
         </div>
       </div>
 
-      {/* Inspector Table */}
-      <div className="max-h-56 overflow-y-auto border border-white/[0.08] rounded-[5px] bg-[#06080c]">
-        <table className="w-full text-left font-mono text-xs">
-          <thead className="bg-[#0a0e16] text-slate-400 sticky top-0 border-b border-white/[0.08] text-[11px]">
+      {/* Inspector Table with Vertical AND Horizontal Scrolling */}
+      <div className="max-h-72 overflow-auto border border-white/[0.08] rounded-[5px] bg-[#06080c]">
+        <table className="min-w-full text-left font-mono text-xs">
+          <thead className="bg-[#0a0e16] text-slate-400 sticky top-0 z-10 border-b border-white/[0.08] text-[11px]">
             <tr>
-              <th className="py-1.5 px-3 font-medium">Variable</th>
-              <th className="py-1.5 px-3 font-medium text-right">Value</th>
+              <th className="py-2 px-3 font-medium whitespace-nowrap">Variable</th>
+              <th className="py-2 px-3 font-medium text-right whitespace-nowrap">Value</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.04]">
             {filteredEntries.length > 0 ? (
               filteredEntries.map(([varName, val]) => (
                 <tr key={varName} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-1 px-3 text-slate-300 font-medium">{varName}</td>
-                  <td className="py-1 px-3 text-right text-white font-mono tabular-nums">
+                  <td className="py-1.5 px-3 text-slate-300 font-medium whitespace-nowrap">
+                    {varName}
+                  </td>
+                  <td className="py-1.5 px-3 text-right text-white font-mono tabular-nums whitespace-nowrap">
                     {val.toFixed(6)}
                   </td>
                 </tr>
